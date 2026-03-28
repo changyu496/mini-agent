@@ -8,6 +8,7 @@ import okhttp3.*;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class OpenAIHttpClient {
     private static final String apiKey = System.getenv("MINI_AGENT_API_KEY");
@@ -16,7 +17,12 @@ public class OpenAIHttpClient {
     private OkHttpClient client;
 
     public OpenAIHttpClient(){
-        client = new OkHttpClient();
+        client = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(60,TimeUnit.SECONDS)
+                .writeTimeout(60,TimeUnit.SECONDS)
+                .callTimeout(90,TimeUnit.SECONDS)
+                .build();
     }
     public OpenAIResponse call(List<Message> messages){
         OpenAIResponse openAIResponse;
