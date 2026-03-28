@@ -1,6 +1,8 @@
 package com.changyu496.agent.mini.dto;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class OpenAIRequestBody {
 
@@ -8,6 +10,8 @@ public class OpenAIRequestBody {
 
     private List<Message> messages;
     private Double temperature;
+
+    private List<Map<String,Object>> tools;
 
     public String getModel() {
         return model;
@@ -31,5 +35,13 @@ public class OpenAIRequestBody {
 
     public void setTemperature(Double temperature) {
         this.temperature = temperature;
+    }
+
+    public List<Map<String,Object>> getTools() {
+        return tools;
+    }
+
+    public void setTools(List<Map<String,Object>> tools) {
+        this.tools = tools;
     }
 }
