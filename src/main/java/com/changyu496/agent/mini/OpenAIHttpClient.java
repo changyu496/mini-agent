@@ -7,11 +7,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class OpenAIHttpClient {
-    private static String apiKey = "sk-cp-oGj492tV56TQ7Gtnci-V-KSbPNKvGu3nL7TYHUh3AVahtH9SlIUkmX9U2rIj7lu2pwabVqZxKmwsftEGcwA_4rpF1zNqrrRa57mwU6g6DMPFt55hEqvOaOI";
+    private static final String apiKey = System.getenv("MINI_AGENT_API_KEY");
     private static String url = "https://api.minimaxi.com/v1/chat/completions";
 
     private OkHttpClient client;
