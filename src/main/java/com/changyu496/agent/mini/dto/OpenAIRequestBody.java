@@ -1,5 +1,7 @@
 package com.changyu496.agent.mini.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -12,6 +14,9 @@ public class OpenAIRequestBody {
     private Double temperature;
 
     private List<Map<String,Object>> tools;
+
+    @JsonProperty("extra_body")
+    private Map<String,Object> extraBody;
 
     public String getModel() {
         return model;
@@ -43,5 +48,13 @@ public class OpenAIRequestBody {
 
     public void setTools(List<Map<String,Object>> tools) {
         this.tools = tools;
+    }
+
+    public Map<String, Object> getExtraBody() {
+        return extraBody;
+    }
+
+    public void setExtraBody(Map<String, Object> extraBody) {
+        this.extraBody = extraBody;
     }
 }

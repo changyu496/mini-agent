@@ -34,6 +34,9 @@ public class OpenAIHttpClient {
         openAIRequestBody.setTemperature(0.7);
         openAIRequestBody.setMessages(messages);
         openAIRequestBody.setTools(getTools());
+        Map<String,Object> extraBody = new HashMap<>();
+        extraBody.put("reasoning_split",true);
+        openAIRequestBody.setExtraBody(extraBody);
         ObjectMapper requestMapper = new ObjectMapper();
         String openAIRequestBodyJsonStr = "";
         try {
