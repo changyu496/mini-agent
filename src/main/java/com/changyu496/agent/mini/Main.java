@@ -48,6 +48,11 @@ public class Main {
                 do {
                     OpenAIResponse openAIResponse = client.call(historyMessages, regTool());
                     assistantMsg = openAIResponse.getChoices().get(0).getMessage();
+                    // 过滤掉 <排除think> 和 </排除think> 标签
+                    String filtered = assistantMsg.getContent()
+                            .replaceAll("<think>[\\s\\S]*?</think>", "")
+                            .trim();
+                    assistantMsg.setContent(filtered);
                     finishReason = openAIResponse.getChoices().get(0).getFinishReason();
                     historyMessages.add(assistantMsg);
                     if ("tool_calls".equals(finishReason)) {
@@ -62,8 +67,18 @@ public class Main {
                     }
                 } while ("tool_calls".equals(finishReason));
                 String content = assistantMsg.getContent();
-                // 过滤掉 <排除think> 和 </排除think> 标签
-                content = content.replaceAll("<think>[\\s\\S]*?</think>", "").trim();
+                if (content.contains("计划")) {
+                    System.out.println("【请确认计划，输入回车执行 或修改意见】");
+                    String confirm = scanner.nextLine();
+                    if (!confirm.isEmpty()) {
+                        Message userMsg = new Message();
+                        userMsg.setRole("user");
+                        userMsg.setContent(confirm);
+                        historyMessages.add(userMsg);
+                        // 重新进入循环
+                        continue;
+                    }
+                }
                 System.out.println("assistant:" + content);
             } catch (Exception e) {
                 System.out.println("大模型调用异常，请稍后重试");
