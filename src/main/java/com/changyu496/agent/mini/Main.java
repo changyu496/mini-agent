@@ -38,9 +38,10 @@ public class Main {
 
             try {
                 String finishReason;
+                Message assistantMsg;
                 do{
                     OpenAIResponse openAIResponse = client.call(historyMessages);
-                    Message assistantMsg = openAIResponse.getChoices().get(0).getMessage();
+                    assistantMsg = openAIResponse.getChoices().get(0).getMessage();
                     finishReason = openAIResponse.getChoices().get(0).getFinishReason();
                     historyMessages.add(assistantMsg);
                     if ("tool_calls".equals(finishReason)){
@@ -54,8 +55,7 @@ public class Main {
                         }
                     }
                 }while ("tool_calls".equals(finishReason));
-                Message finalMsg = historyMessages.get(historyMessages.size()-1);
-                System.out.println("assistant:" + finalMsg.getContent());
+                System.out.println("assistant:" + assistantMsg.getContent());
             } catch (Exception e) {
                 System.out.println("大模型调用异常，请稍后重试");
             }
