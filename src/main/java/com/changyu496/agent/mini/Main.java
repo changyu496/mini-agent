@@ -66,20 +66,7 @@ public class Main {
                         }
                     }
                 } while ("tool_calls".equals(finishReason));
-                String content = assistantMsg.getContent();
-                if (content.contains("计划")) {
-                    System.out.println("【请确认计划，输入回车执行 或修改意见】");
-                    String confirm = scanner.nextLine();
-                    if (!confirm.isEmpty()) {
-                        Message userMsg = new Message();
-                        userMsg.setRole("user");
-                        userMsg.setContent(confirm);
-                        historyMessages.add(userMsg);
-                        // 重新进入循环
-                        continue;
-                    }
-                }
-                System.out.println("assistant:" + content);
+                System.out.println("assistant:" + assistantMsg.getContent());
             } catch (Exception e) {
                 System.out.println("大模型调用异常，请稍后重试");
             }
@@ -95,10 +82,10 @@ public class Main {
                 "- 写入和更新笔记（使用 write_file 工具）\n" +
                 "- 基于笔记内容展开讨论和追问\n" +
                 "重要原则：\n" +
-                "1. 在调用任何工具之前，先在回复中说明你的计划，格式如下：\n" +
-                "   计划：[你要做的事情，简要说明]\n" +
-                "2. 等待用户确认后，再执行工具调用\n" +
-                "3. 每次讨论后，主动询问用户是否要将重要内容写入笔记\n" +
+                "1. 在调用任何工具之前，你必须先输出一行\"计划：\"开头的文字，格式如下：\n" +
+                "   计划：我要调用 [工具名]，因为 [原因]\n" +
+                "   然后等待用户确认，才能执行。\n" +
+                "   如果你没有先说\"计划：\"就直接执行，用户会感到困惑。" +
                 "笔记目录：~/.reading-agent/workspace/");
         historyMessages.add(system);
     }
