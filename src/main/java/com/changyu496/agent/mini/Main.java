@@ -4,6 +4,7 @@ import com.changyu496.agent.mini.dto.Message;
 import com.changyu496.agent.mini.dto.OpenAIResponse;
 import com.changyu496.agent.mini.dto.ToolCall;
 import com.changyu496.agent.mini.tool.ReadFileHandler;
+import com.changyu496.agent.mini.tool.SearchNotesHandler;
 import com.changyu496.agent.mini.tool.ToolDefinition;
 import com.changyu496.agent.mini.tool.WriteFileHandler;
 
@@ -16,6 +17,7 @@ public class Main {
     static {
         dispatcher.put("read_file", getReadFileDefinition());
         dispatcher.put("write_file", getWriteFileDefinition());
+        dispatcher.put("search_notes", getSearchNotesDefinition());
     }
 
     private static final int MAX_MESSAGE_SIZE = 100;
@@ -59,7 +61,10 @@ public class Main {
                         }
                     }
                 } while ("tool_calls".equals(finishReason));
-                System.out.println("assistant:" + assistantMsg.getContent());
+                String content = assistantMsg.getContent();
+                // 过滤掉 <排除think> 和 </排除think> 标签
+                content = content.replaceAll("<think>[\\s\\S]*?</think>", "").trim();
+                System.out.println("assistant:" + content);
             } catch (Exception e) {
                 System.out.println("大模型调用异常，请稍后重试");
             }
@@ -145,6 +150,24 @@ public class Main {
         requiredList.add("content");
         writeParams.put("required", requiredList);
         return new ToolDefinition("write_file", "写入文件内容", writeParams, new WriteFileHandler());
+    }
 
+    public static ToolDefinition getSearchNotesDefinition() {
+        Map<String, Object> searchNotesParams = new HashMap<>();
+        Map<String, Object> searchNotesProps = new HashMap<>();
+        Map<String, Object> keyword = new HashMap<>();
+        keyword.put("type", "string");
+        keyword.put("description", "搜索关键字");
+        Map<String, Object> dir = new HashMap<>();
+        dir.put("type", "string");
+        dir.put("description", "搜索的目录路径地址");
+        searchNotesProps.put("keyword", keyword);
+        searchNotesProps.put("dir", dir);
+        searchNotesParams.put("type", "object");
+        searchNotesParams.put("properties", searchNotesProps);
+        List<String> requiredList = new ArrayList<>();
+        requiredList.add("keyword");
+        searchNotesParams.put("required", requiredList);
+        return new ToolDefinition("search_notes", "查找读书笔记", searchNotesParams, new SearchNotesHandler());
     }
 }
