@@ -3,23 +3,27 @@ package com.changyu496.agent.mini;
 import com.changyu496.agent.mini.dto.Message;
 import com.changyu496.agent.mini.dto.OpenAIResponse;
 import com.changyu496.agent.mini.dto.ToolCall;
+import com.changyu496.agent.mini.tool.ReadFileHandler;
+import com.changyu496.agent.mini.tool.ToolDefinition;
 
 import java.util.*;
 
 public class Main {
 
+    private static final Map<String, ToolDefinition> dispatcher = new HashMap<>();
+
+    static {
+        dispatcher.put("read_file", getReadFileDefinition());
+    }
 
     private static final int MAX_MESSAGE_SIZE = 100;
 
     public static void main(String[] args) {
-
         List<Message> historyMessages = new ArrayList<>();
-        Message system = new Message();
-        system.setRole("system");
-        system.setContent("你是一个mini助手，帮助用户解决问题");
-        historyMessages.add(system);
+
         Scanner scanner = new Scanner(System.in);
         OpenAIHttpClient client = new OpenAIHttpClient();
+        buildSystemPrompt(historyMessages);
         while (true) {
             System.out.print("mini agent >> ");
             String userInput = scanner.nextLine();
@@ -34,19 +38,17 @@ public class Main {
             message.setContent(userInput);
             message.setRole("user");
             historyMessages.add(message);
-
-
             try {
                 String finishReason;
                 Message assistantMsg;
-                do{
-                    OpenAIResponse openAIResponse = client.call(historyMessages);
+                do {
+                    OpenAIResponse openAIResponse = client.call(historyMessages, regTool());
                     assistantMsg = openAIResponse.getChoices().get(0).getMessage();
                     finishReason = openAIResponse.getChoices().get(0).getFinishReason();
                     historyMessages.add(assistantMsg);
-                    if ("tool_calls".equals(finishReason)){
-                        for(ToolCall toolCall : assistantMsg.getToolCalls()){
-                            String result = callWeather(toolCall);
+                    if ("tool_calls".equals(finishReason)) {
+                        for (ToolCall toolCall : assistantMsg.getToolCalls()) {
+                            String result = callTool(toolCall);
                             Message toolResult = new Message();
                             toolResult.setRole("tool");
                             toolResult.setToolCallId(toolCall.getId());
@@ -54,7 +56,7 @@ public class Main {
                             historyMessages.add(toolResult);
                         }
                     }
-                }while ("tool_calls".equals(finishReason));
+                } while ("tool_calls".equals(finishReason));
                 System.out.println("assistant:" + assistantMsg.getContent());
             } catch (Exception e) {
                 System.out.println("大模型调用异常，请稍后重试");
@@ -62,8 +64,53 @@ public class Main {
         }
     }
 
-    private static String callWeather(ToolCall toolCall){
-        return "今天的天气晴，29度";
+    private static void buildSystemPrompt(List<Message> historyMessages) {
+        Message system = new Message();
+        system.setRole("system");
+        system.setContent("你是一个mini助手，帮助用户解决问题");
+        historyMessages.add(system);
     }
 
+    private static List<Map<String, Object>> regTool() {
+        List<Map<String, Object>> tools = new ArrayList<>();
+        dispatcher.values().forEach(toolDefinition -> {
+            Map<String, Object> toolMap = new HashMap<>();
+            Map<String, Object> function = new HashMap<>();
+            toolMap.put("function", function);
+            toolMap.put("type", "function");
+            function.put("name", toolDefinition.getName());
+            function.put("parameters", toolDefinition.getParameterSchema());
+            tools.add(toolMap);
+        });
+        return tools;
+    }
+
+    private static String callTool(ToolCall toolCall) {
+        String functionName = toolCall.getFunction().getName();
+        String arguments = toolCall.getFunction().getArguments();
+        ToolDefinition toolDefinition = dispatcher.get(functionName);
+        if (Objects.isNull(toolDefinition)) {
+            return "未知工具";
+        }
+        return toolDefinition.getToolHandler().execute(arguments);
+    }
+
+
+    public static ToolDefinition getReadFileDefinition() {
+        Map<String, Object> readParams = new HashMap<>();
+        Map<String, Object> readProps = new HashMap<>();
+        Map<String, Object> path = new HashMap<>();
+        path.put("type", "string");
+        path.put("description", "要读取的文件路径");
+        readProps.put("path", path);
+        readParams.put("type", "object");
+        readParams.put("properties", readProps);
+        List<String> requiredList = new ArrayList<>();
+        requiredList.add("path");
+        readParams.put("required", requiredList);
+        return new ToolDefinition("read_file",
+                "读取文件内容",
+                readParams, new ReadFileHandler()
+        );
+    }
 }
