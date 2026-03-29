@@ -36,6 +36,8 @@ public class SearchNotesHandler implements ToolHandler {
             Path dirPath = Path.of(dir);
             List<Path> filePath = Files.list(dirPath).toList();
             // 先只考虑一层
+            int fileCount = 0;
+            int matchCount = 0;
             if (filePath.size() > 0) {
                 for (Path path : filePath) {
                     List<String> singleFileFindResult = new ArrayList<>();
@@ -43,22 +45,27 @@ public class SearchNotesHandler implements ToolHandler {
                         List<String> line = Files.readAllLines(path);
                         for (int j = 0; j < line.size(); j++) {
                             if (line.get(j).contains(keyword)) {
-
                                 singleFileFindResult.add("-第" + (j + 1) + "行" + line.get(j));
                             }
                         }
                         if (singleFileFindResult.size() > 0) {
+                            fileCount++;
                             stringBuilder.append("文件：")
                                     .append(path.toAbsolutePath())
                                     .append("\r\n")
                                     .append(convertSingleFindResult(singleFileFindResult));
                         }
+                        matchCount += singleFileFindResult.size();
                     } catch (IOException e) {
                         return "查找笔记遇到异常" + e.getMessage();
                     }
                 }
+                stringBuilder.append("\r\n").append("共匹配 ")
+                        .append(fileCount)
+                        .append(" 个文件，")
+                        .append(matchCount)
+                        .append(" 处记录。");
             }
-
         } catch (IOException e) {
             return "查找笔记遇到异常" + e.getMessage();
         }
