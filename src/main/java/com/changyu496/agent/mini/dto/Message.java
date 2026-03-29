@@ -7,8 +7,10 @@ import java.util.List;
 public class Message {
     private String role;
     private String content;
-
     private String name;
+
+    @JsonProperty("tool_call_id")
+    private String toolCallId;
 
     @JsonProperty("tool_calls")
     private List<ToolCall> toolCalls;
@@ -67,13 +69,24 @@ public class Message {
         this.reasoningDetails = reasoningDetails;
     }
 
+    public String getToolCallId() {
+        return toolCallId;
+    }
+
+    public void setToolCallId(String toolCallId) {
+        this.toolCallId = toolCallId;
+    }
+
     @Override
     public String toString() {
         return "Message{" +
                 "role='" + role + '\'' +
                 ", content='" + content + '\'' +
                 ", name='" + name + '\'' +
+                ", toolCallId='" + toolCallId + '\'' +
+                ", toolCalls=" + toolCalls +
                 ", audioContent='" + audioContent + '\'' +
+                ", reasoningDetails=" + reasoningDetails +
                 '}';
     }
 }
