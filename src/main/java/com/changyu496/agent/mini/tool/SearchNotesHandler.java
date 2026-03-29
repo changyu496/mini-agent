@@ -23,13 +23,7 @@ public class SearchNotesHandler implements ToolHandler {
             arg = objectMapper.readValue(argJson, Map.class);
             String keyword = String.valueOf(arg.get("keyword"));
             String dir = String.valueOf(arg.get("dir"));
-            if (Objects.isNull(dir)) {
-                dir = DEFAULT_PATH;
-            }
-            if ("".equals(dir)) {
-                dir = DEFAULT_PATH;
-            }
-            if ("null".equals(dir)) {
+            if (dir == null || dir.isEmpty() || "null".equals(dir)) {
                 dir = DEFAULT_PATH;
             }
             // 遍历指定文件夹
