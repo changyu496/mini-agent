@@ -79,6 +79,7 @@ public class Main {
             toolMap.put("function", function);
             toolMap.put("type", "function");
             function.put("name", toolDefinition.getName());
+            function.put("description", toolDefinition.getDescription());
             function.put("parameters", toolDefinition.getParameterSchema());
             tools.add(toolMap);
         });

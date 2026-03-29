@@ -21,7 +21,7 @@ public class ReadFileHandler implements ToolHandler {
         } catch (NoSuchFileException e) {
             return "文件不存在: " + path + "\n你可以尝试其他路径。";
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            return "读取文件失败: " + e.getMessage();
         }
     }
 }
