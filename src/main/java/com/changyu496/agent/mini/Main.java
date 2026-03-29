@@ -5,6 +5,7 @@ import com.changyu496.agent.mini.dto.OpenAIResponse;
 import com.changyu496.agent.mini.dto.ToolCall;
 import com.changyu496.agent.mini.tool.ReadFileHandler;
 import com.changyu496.agent.mini.tool.ToolDefinition;
+import com.changyu496.agent.mini.tool.WriteFileHandler;
 
 import java.util.*;
 
@@ -14,6 +15,7 @@ public class Main {
 
     static {
         dispatcher.put("read_file", getReadFileDefinition());
+        dispatcher.put("write_file", getWriteFileDefinition());
     }
 
     private static final int MAX_MESSAGE_SIZE = 100;
@@ -113,5 +115,26 @@ public class Main {
                 "读取文件内容",
                 readParams, new ReadFileHandler()
         );
+    }
+
+    public static ToolDefinition getWriteFileDefinition() {
+        Map<String, Object> writeParams = new HashMap<>();
+        Map<String, Object> writeProps = new HashMap<>();
+        Map<String, Object> path = new HashMap<>();
+        path.put("type", "string");
+        path.put("description", "要写入的文件路径");
+        Map<String, Object> content = new HashMap<>();
+        content.put("type", "string");
+        content.put("description", "要写入的内容");
+        writeProps.put("path", path);
+        writeProps.put("content", content);
+        writeParams.put("type", "object");
+        writeParams.put("properties", writeProps);
+        List<String> requiredList = new ArrayList<>();
+        requiredList.add("path");
+        requiredList.add("content");
+        writeParams.put("required", requiredList);
+        return new ToolDefinition("write_file", "写入文件内容", writeParams, new WriteFileHandler());
+
     }
 }
