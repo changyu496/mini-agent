@@ -13,12 +13,12 @@ public class WriteFileHandler implements ToolHandler {
     public String execute(String argJson) {
         ObjectMapper objectMapper = new ObjectMapper();
         try {
-            Map<String, Object> argMap = objectMapper.readValue(argJson, Map.class);
+            Map argMap = objectMapper.readValue(argJson, Map.class);
             String pathStr = String.valueOf(argMap.get("path"));
             String content = String.valueOf(argMap.get("content"));
             Path path = Path.of(pathStr);
-            Path writePath = Files.writeString(path, content);
-            return "文件已经写入成功，位置为:" + writePath.getFileName().getFileName();
+            Files.writeString(path, content);
+            return "文件写入成功: " + pathStr;
         } catch (JsonProcessingException e) {
             return "参数有问题，请检查";
         } catch (IOException e) {
