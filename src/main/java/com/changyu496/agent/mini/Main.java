@@ -73,9 +73,9 @@ public class Main {
                 roundSinceTodo++;
                 if (roundSinceTodo >= 3) {
                     Message reminder = new Message();
-                    reminder.setRole("tool");
+                    reminder.setRole("user");
                     reminder.setContent("<reminder>你已经3轮没有更新todo了，请调用todo工具</reminder>");
-                    reminder.setToolCallId("nag-reminder");
+                    reminder.setToolCallId(null);
                     historyMessages.add(reminder);
                     roundSinceTodo = 0;
                 }
@@ -201,7 +201,7 @@ public class Main {
 
         Map<String, Object> items = new HashMap<>();
         items.put("type", "array");
-        items.put("description", "待办事项列表，每项{id:string,text:string,status:'pending'|'in_progress|'completed',仅action=update时用");
+        items.put("description", "待办事项列表，每项格式：{id:string, text:string, status:string}，status可为pending/in_progress/completed，仅action=update时用");
         todoProps.put("items", items);
 
         Map<String, Object> book = new HashMap<>();
