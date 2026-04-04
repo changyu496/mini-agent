@@ -1,9 +1,13 @@
 package com.changyu496.agent.mini.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+@NoArgsConstructor
+@Data
 public class Message {
     private String role;
     private String content;

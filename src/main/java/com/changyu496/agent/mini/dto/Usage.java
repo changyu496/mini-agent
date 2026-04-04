@@ -1,7 +1,9 @@
 package com.changyu496.agent.mini.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Usage {
 
     @JsonProperty("total_tokens")
@@ -19,7 +21,7 @@ public class Usage {
     @JsonProperty("completion_tokens_details")
     private CompletionTokensDetails completionTokensDetails;
 
-    private static class CompletionTokensDetails{
+    private static class CompletionTokensDetails {
         @JsonProperty("reasoning_tokens")
         private Integer reasoningTokens;
 

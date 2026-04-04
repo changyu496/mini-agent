@@ -3,10 +3,7 @@ package com.changyu496.agent.mini;
 import com.changyu496.agent.mini.dto.Message;
 import com.changyu496.agent.mini.dto.OpenAIResponse;
 import com.changyu496.agent.mini.dto.ToolCall;
-import com.changyu496.agent.mini.tool.ReadFileHandler;
-import com.changyu496.agent.mini.tool.SearchNotesHandler;
-import com.changyu496.agent.mini.tool.ToolDefinition;
-import com.changyu496.agent.mini.tool.WriteFileHandler;
+import com.changyu496.agent.mini.tool.*;
 
 import java.util.*;
 
@@ -18,6 +15,7 @@ public class Main {
         dispatcher.put("read_file", getReadFileDefinition());
         dispatcher.put("write_file", getWriteFileDefinition());
         dispatcher.put("search_notes", getSearchNotesDefinition());
+        dispatcher.put("todo", getTodoDefinition());
     }
 
     private static final int MAX_MESSAGE_SIZE = 100;
@@ -28,6 +26,7 @@ public class Main {
         Scanner scanner = new Scanner(System.in);
         OpenAIHttpClient client = new OpenAIHttpClient();
         buildSystemPrompt(historyMessages);
+        int roundSinceTodo = 0;
         while (true) {
             System.out.print("mini agent >> ");
             String userInput = scanner.nextLine();
@@ -45,6 +44,7 @@ public class Main {
             try {
                 String finishReason;
                 Message assistantMsg;
+
                 do {
                     OpenAIResponse openAIResponse = client.call(historyMessages, regTool());
                     assistantMsg = openAIResponse.getChoices().get(0).getMessage();
@@ -58,6 +58,9 @@ public class Main {
                     if ("tool_calls".equals(finishReason)) {
                         for (ToolCall toolCall : assistantMsg.getToolCalls()) {
                             String result = callTool(toolCall);
+                            if ("todo".equals(toolCall.getFunction().getName())) {
+                                roundSinceTodo = 0;
+                            }
                             Message toolResult = new Message();
                             toolResult.setRole("tool");
                             toolResult.setToolCallId(toolCall.getId());
@@ -67,8 +70,17 @@ public class Main {
                     }
                 } while ("tool_calls".equals(finishReason));
                 System.out.println("assistant:" + assistantMsg.getContent());
+                roundSinceTodo++;
+                if (roundSinceTodo >= 3) {
+                    Message reminder = new Message();
+                    reminder.setRole("tool");
+                    reminder.setContent("<reminder>你已经3轮没有更新todo了，请调用todo工具</reminder>");
+                    reminder.setToolCallId("nag-reminder");
+                    historyMessages.add(reminder);
+                    roundSinceTodo = 0;
+                }
             } catch (Exception e) {
-                System.out.println("大模型调用异常，请稍后重试");
+                e.printStackTrace();
             }
         }
     }
@@ -76,17 +88,20 @@ public class Main {
     private static void buildSystemPrompt(List<Message> historyMessages) {
         Message system = new Message();
         system.setRole("system");
+        String todoStatus = TodoManager.getInstance().render();
         system.setContent("你是一个读书伴侣，专注于帮助用户深入理解读过的书。\n" +
                 "你的核心能力：\n" +
                 "- 读取用户的读书笔记（使用 read_file 工具）\n" +
                 "- 写入和更新笔记（使用 write_file 工具）\n" +
+                "- 管理待办和进度（使用 todo 工具）\n" +
                 "- 基于笔记内容展开讨论和追问\n" +
-                "重要原则：\n" +
-                "1. 在调用任何工具之前，你必须先输出一行\"计划：\"开头的文字，格式如下：\n" +
-                "   计划：我要调用 [工具名]，因为 [原因]\n" +
-                "   然后等待用户确认，才能执行。\n" +
-                "   如果你没有先说\"计划：\"就直接执行，用户会感到困惑。" +
-                "笔记目录：~/.reading-agent/workspace/");
+                todoStatus + "\n" +
+                "【关键规则】\n" +
+                "- 用户提到更新读书进度（读到哪章、换书等）→ 必须调用 todo 工具，action=progress\n" +
+                "- 用户提到添加待办、完成任务 → 必须调用 todo 工具，action=update\n" +
+                "- 其他情况（读笔记、写笔记）才用 read_file / write_file\n" +
+                "笔记目录：~/.reading-agent/workspace/\n" +
+                "todo 文件：~/.reading-agent/workspace/todo.json");
         historyMessages.add(system);
     }
 
@@ -171,5 +186,42 @@ public class Main {
         requiredList.add("keyword");
         searchNotesParams.put("required", requiredList);
         return new ToolDefinition("search_notes", "查找读书笔记", searchNotesParams, new SearchNotesHandler());
+    }
+
+    public static ToolDefinition getTodoDefinition() {
+        Map<String, Object> todoParams = new HashMap<>();
+        todoParams.put("type", "object");
+
+        Map<String, Object> todoProps = new HashMap<>();
+
+        Map<String, Object> action = new HashMap<>();
+        action.put("type", "string");
+        action.put("description", "操作类型 action 或 progress");
+        todoProps.put("action", action);
+
+        Map<String, Object> items = new HashMap<>();
+        items.put("type", "array");
+        items.put("description", "待办事项列表，每项{id:string,text:string,status:'pending'|'in_progress|'completed',仅action=update时用");
+        todoProps.put("items", items);
+
+        Map<String, Object> book = new HashMap<>();
+        book.put("type", "string");
+        book.put("description", "当前在读的书名，仅 action = progress时用");
+        todoProps.put("book", book);
+
+        Map<String, Object> chapter = new HashMap<>();
+        chapter.put("type", "integer");
+        chapter.put("description", "当前章节号，仅 action = progress时用");
+        todoProps.put("chapter", chapter);
+
+        Map<String, Object> progress = new HashMap<>();
+        progress.put("type", "string");
+        progress.put("description", "当前进度，仅 action = progress时用");
+        todoProps.put("progress", progress);
+
+        todoParams.put("properties", todoProps);
+        todoParams.put("required", List.of("action"));
+
+        return new ToolDefinition("todo", "管理读书进度和待办事项", todoParams, new TodoHandler());
     }
 }

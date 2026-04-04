@@ -35,7 +35,7 @@ public class OpenAIHttpClient {
         openAIRequestBody.setMessages(messages);
         openAIRequestBody.setTools(tools);
         Map<String, Object> extraBody = new HashMap<>();
-        extraBody.put("reasoning_split", true);
+//        extraBody.put("reasoning_split", true);
         openAIRequestBody.setExtraBody(extraBody);
         ObjectMapper requestMapper = new ObjectMapper();
         String openAIRequestBodyJsonStr = "";
@@ -44,6 +44,7 @@ public class OpenAIHttpClient {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        System.out.println("请求体：" + openAIRequestBodyJsonStr);
         RequestBody body = RequestBody.create(openAIRequestBodyJsonStr, MediaType.parse("application/json"));
         Request request = new Request.Builder()
                 .url(url)
