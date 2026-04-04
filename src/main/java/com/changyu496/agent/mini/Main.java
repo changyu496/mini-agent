@@ -5,7 +5,14 @@ import com.changyu496.agent.mini.dto.OpenAIResponse;
 import com.changyu496.agent.mini.dto.ToolCall;
 import com.changyu496.agent.mini.tool.*;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+
+import static java.nio.file.StandardOpenOption.APPEND;
 
 public class Main {
 
@@ -18,13 +25,14 @@ public class Main {
         dispatcher.put("todo", getTodoDefinition());
         dispatcher.put("task", getTaskDefinition());
         dispatcher.put("load_skill", getLoadSkillDefinition());
+        dispatcher.put("compact", getCompactDefinition());
     }
 
     private static final int MAX_MESSAGE_SIZE = 100;
 
-    public static void main(String[] args) {
-        List<Message> historyMessages = new ArrayList<>();
+    public static List<Message> historyMessages = new ArrayList<>();
 
+    public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         OpenAIHttpClient client = new OpenAIHttpClient();
         buildSystemPrompt(historyMessages);
@@ -48,12 +56,15 @@ public class Main {
                 Message assistantMsg;
 
                 do {
+                    microCompact(historyMessages);
+                    int estimatedTokens = historyMessages.stream().mapToInt(m -> m.getContent() == null ? 0 : m.getContent().length() / 4).sum();
+                    if (estimatedTokens > 50000) {
+                        historyMessages = autoCompact(historyMessages);
+                    }
                     OpenAIResponse openAIResponse = client.call(historyMessages, regTool());
                     assistantMsg = openAIResponse.getChoices().get(0).getMessage();
                     // 过滤掉 <排除think> 和 </排除think> 标签
-                    String filtered = assistantMsg.getContent()
-                            .replaceAll("<think>[\\s\\S]*?</think>", "")
-                            .trim();
+                    String filtered = assistantMsg.getContent().replaceAll("<think>[\\s\\S]*?</think>", "").trim();
                     assistantMsg.setContent(filtered);
                     finishReason = openAIResponse.getChoices().get(0).getFinishReason();
                     historyMessages.add(assistantMsg);
@@ -65,6 +76,7 @@ public class Main {
                             }
                             Message toolResult = new Message();
                             toolResult.setRole("tool");
+                            toolResult.setName(toolCall.getFunction().getName());
                             toolResult.setToolCallId(toolCall.getId());
                             toolResult.setContent(result);
                             historyMessages.add(toolResult);
@@ -72,6 +84,7 @@ public class Main {
                     }
                 } while ("tool_calls".equals(finishReason));
                 System.out.println("assistant:" + assistantMsg.getContent());
+                microCompact(historyMessages);
                 roundSinceTodo++;
                 if (roundSinceTodo >= 3) {
                     Message reminder = new Message();
@@ -87,18 +100,77 @@ public class Main {
         }
     }
 
+    private static void microCompact(List<Message> historyMessages) {
+        int toolResultCount = 0;
+        for (int i = historyMessages.size() - 1; i >= 0; i--) {
+            Message msg = historyMessages.get(i);
+            if (msg.getRole().equals("tool")) {
+                toolResultCount++;
+                if (toolResultCount > 3) {
+                    System.out.println("[microCompact] 替换: " + msg.getName()
+                            + " -> " + msg.getContent().substring(0, Math.min(50, msg.getContent().length())) + "...");
+
+                    msg.setContent("[Previously used {" + historyMessages.get(i).getName() + "}]");
+                }
+            }
+        }
+    }
+
+    public static List<Message> autoCompact(List<Message> historyMessages) {
+        String DEFAULT_PATH = "/Users/changyu/.reading-agent/transcripts";
+        // 获取当前时间，作为文件名
+        String fileName = DEFAULT_PATH + "/" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".md";
+        Path filePath = Path.of(fileName);
+        if (!Files.exists(filePath)) {
+            try {
+                Files.createFile(filePath);
+            } catch (IOException e) {
+                System.out.println("创建记忆文件失败，遇到异常" + e.getMessage());
+                return historyMessages;
+            }
+        }
+        // 把内容转成json写入
+        StringBuilder stringBuilder = new StringBuilder();
+        historyMessages.forEach(message -> stringBuilder.append(message.getRole())
+                .append(":")
+                .append(message.getContent())
+                .append("\n"));
+        try {
+            Files.writeString(filePath, stringBuilder.toString(), APPEND);
+        } catch (IOException e) {
+            System.out.println("写入记忆文件失败，遇到异常" + e.getMessage());
+            return historyMessages;
+        }
+        // 做摘要
+        OpenAIHttpClient openAIHttpClient = new OpenAIHttpClient();
+        Message system = new Message();
+        system.setRole("system");
+        system.setContent("请根据内容帮我最摘要，返回[摘要信息]+[确认消息]");
+        List<Message> summaryMessage = new ArrayList<>();
+        Message user = new Message();
+        user.setRole("user");
+        user.setContent(stringBuilder.toString());
+        summaryMessage.add(system);
+        summaryMessage.add(user);
+        OpenAIResponse openAIResponse = openAIHttpClient.call(summaryMessage, new ArrayList<>());
+        String summaryText = openAIResponse.getChoices().get(0).getMessage().getContent();
+        List<Message> compact = new ArrayList<>();
+        Message summary = new Message();
+        summary.setRole("user");
+        summary.setContent("【摘要】" + summaryText);
+        Message confirm = new Message();
+        confirm.setRole("assistant");
+        confirm.setContent("好的，我记住了");
+        compact.add(summary);
+        compact.add(confirm);
+        return compact;
+    }
+
     private static void buildSubAgentSystemPrompt(List<Message> historyMessages) {
         Message system = new Message();
         system.setRole("system");
         String todoStatus = TodoManager.getInstance().render();
-        system.setContent(
-                "你是一个专业的读书研究助手，专注于深入研究用户提出的问题。\n" +
-                        "你会收到一个具体的研究任务，请用搜索和阅读工具找到答案，\n" +
-                        "最后用清晰的语言总结你的发现。\n" +
-                        "【当前状态】\n" + todoStatus + "\n" +
-                        "只返回最终研究结论，不要重复工具调用的过程。\n" +
-                        "笔记目录：~/.reading-agent/workspace/"
-        );
+        system.setContent("你是一个专业的读书研究助手，专注于深入研究用户提出的问题。\n" + "你会收到一个具体的研究任务，请用搜索和阅读工具找到答案，\n" + "最后用清晰的语言总结你的发现。\n" + "【当前状态】\n" + todoStatus + "\n" + "只返回最终研究结论，不要重复工具调用的过程。\n" + "笔记目录：~/.reading-agent/workspace/");
         historyMessages.add(system);
     }
 
@@ -145,21 +217,7 @@ public class Main {
         Message system = new Message();
         system.setRole("system");
         String todoStatus = TodoManager.getInstance().render();
-        system.setContent("你是一个读书伴侣，专注于帮助用户深入理解读过的书。\n" +
-                "你的核心能力：\n" +
-                "- 读取用户的读书笔记（使用 read_file 工具）\n" +
-                "- 写入和更新笔记（使用 write_file 工具）\n" +
-                "- 管理待办和进度（使用 todo 工具）\n" +
-                "- 基于笔记内容展开讨论和追问\n" +
-                todoStatus + "\n" +
-                "【可用技能】\n" +
-                SkillLoader.getInstance().getDescriptions() + "\n" +
-                "【关键规则】\n" +
-                "- 用户提到更新读书进度（读到哪章、换书等）→ 必须调用 todo 工具，action=progress\n" +
-                "- 用户提到添加待办、完成任务 → 必须调用 todo 工具，action=update\n" +
-                "- 其他情况（读笔记、写笔记）才用 read_file / write_file\n" +
-                "笔记目录：~/.reading-agent/workspace/\n" +
-                "todo 文件：~/.reading-agent/workspace/todo.json");
+        system.setContent("你是一个读书伴侣，专注于帮助用户深入理解读过的书。\n" + "你的核心能力：\n" + "- 读取用户的读书笔记（使用 read_file 工具）\n" + "- 写入和更新笔记（使用 write_file 工具）\n" + "- 管理待办和进度（使用 todo 工具）\n" + "- 基于笔记内容展开讨论和追问\n" + todoStatus + "\n" + "【可用技能】\n" + SkillLoader.getInstance().getDescriptions() + "\n" + "【关键规则】\n" + "- 用户提到更新读书进度（读到哪章、换书等）→ 必须调用 todo 工具，action=progress\n" + "- 用户提到添加待办、完成任务 → 必须调用 todo 工具，action=update\n" + "- 其他情况（读笔记、写笔记）才用 read_file / write_file\n" + "笔记目录：~/.reading-agent/workspace/\n" + "todo 文件：~/.reading-agent/workspace/todo.json");
         historyMessages.add(system);
     }
 
@@ -218,10 +276,7 @@ public class Main {
         List<String> requiredList = new ArrayList<>();
         requiredList.add("path");
         readParams.put("required", requiredList);
-        return new ToolDefinition("read_file",
-                "读取文件内容",
-                readParams, new ReadFileHandler()
-        );
+        return new ToolDefinition("read_file", "读取文件内容", readParams, new ReadFileHandler());
     }
 
     public static ToolDefinition getWriteFileDefinition() {
@@ -337,5 +392,13 @@ public class Main {
         loadSkillParams.put("required", List.of("name"));
 
         return new ToolDefinition("load_skill", "获取技能", loadSkillParams, new LoadSkillHandler());
+    }
+
+    public static ToolDefinition getCompactDefinition() {
+        Map<String, Object> compactParams = new HashMap<>();
+        compactParams.put("type", "object");
+        compactParams.put("properties", new HashMap<>());
+        compactParams.put("required", new ArrayList<>());
+        return new ToolDefinition("compact", "压缩对话", compactParams, new CompactHandler());
     }
 }
