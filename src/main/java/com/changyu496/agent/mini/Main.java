@@ -16,6 +16,7 @@ public class Main {
         dispatcher.put("write_file", getWriteFileDefinition());
         dispatcher.put("search_notes", getSearchNotesDefinition());
         dispatcher.put("todo", getTodoDefinition());
+        dispatcher.put("task", getTaskDefinition());
     }
 
     private static final int MAX_MESSAGE_SIZE = 100;
@@ -85,6 +86,60 @@ public class Main {
         }
     }
 
+    private static void buildSubAgentSystemPrompt(List<Message> historyMessages) {
+        Message system = new Message();
+        system.setRole("system");
+        String todoStatus = TodoManager.getInstance().render();
+        system.setContent(
+                "你是一个专业的读书研究助手，专注于深入研究用户提出的问题。\n" +
+                        "你会收到一个具体的研究任务，请用搜索和阅读工具找到答案，\n" +
+                        "最后用清晰的语言总结你的发现。\n" +
+                        "【当前状态】\n" + todoStatus + "\n" +
+                        "只返回最终研究结论，不要重复工具调用的过程。\n" +
+                        "笔记目录：~/.reading-agent/workspace/"
+        );
+        historyMessages.add(system);
+    }
+
+    public static String runSubAgent(String prompt) {
+        List<Message> subMessages = new ArrayList<>();
+        buildSubAgentSystemPrompt(subMessages);
+
+        Message userMessage = new Message();
+        userMessage.setRole("user");
+        userMessage.setContent(prompt);
+        subMessages.add(userMessage);
+
+        // 最大轮数
+        int maxRound = 30;
+        int round = 0;
+
+        while (round < maxRound) {
+            OpenAIHttpClient openAIHttpClient = new OpenAIHttpClient();
+            List<Map<String, Object>> tools = regBasicTool();
+
+            OpenAIResponse openAIResponse = openAIHttpClient.call(subMessages, tools);
+            Message assistantMessage = openAIResponse.getChoices().get(0).getMessage();
+            subMessages.add(assistantMessage);
+
+            String finishReason = openAIResponse.getChoices().get(0).getFinishReason();
+
+            if (!"tool_calls".equals(finishReason)) {
+                return assistantMessage.getContent() != null ? assistantMessage.getContent() : "(无结果)";
+            }
+            for (ToolCall toolCall : assistantMessage.getToolCalls()) {
+                String toolResult = callTool(toolCall);
+                Message toolResultMessage = new Message();
+                toolResultMessage.setContent(toolResult);
+                toolResultMessage.setRole("tool");
+                toolResultMessage.setToolCallId(toolCall.getId());
+                subMessages.add(toolResultMessage);
+            }
+            round++;
+        }
+        return "(达到最大轮次限制)";
+    }
+
     private static void buildSystemPrompt(List<Message> historyMessages) {
         Message system = new Message();
         system.setRole("system");
@@ -107,17 +162,32 @@ public class Main {
 
     private static List<Map<String, Object>> regTool() {
         List<Map<String, Object>> tools = new ArrayList<>();
-        dispatcher.values().forEach(toolDefinition -> {
-            Map<String, Object> toolMap = new HashMap<>();
-            Map<String, Object> function = new HashMap<>();
-            toolMap.put("function", function);
-            toolMap.put("type", "function");
-            function.put("name", toolDefinition.getName());
-            function.put("description", toolDefinition.getDescription());
-            function.put("parameters", toolDefinition.getParameterSchema());
-            tools.add(toolMap);
-        });
+        tools.add(toolToMap(getReadFileDefinition()));
+        tools.add(toolToMap(getWriteFileDefinition()));
+        tools.add(toolToMap(getSearchNotesDefinition()));
+        tools.add(toolToMap(getTodoDefinition()));
+        tools.add(toolToMap(getTaskDefinition()));
         return tools;
+    }
+
+    private static List<Map<String, Object>> regBasicTool() {
+        List<Map<String, Object>> tools = new ArrayList<>();
+        tools.add(toolToMap(getReadFileDefinition()));
+        tools.add(toolToMap(getWriteFileDefinition()));
+        tools.add(toolToMap(getSearchNotesDefinition()));
+        tools.add(toolToMap(getTodoDefinition()));
+        return tools;
+    }
+
+    private static Map<String, Object> toolToMap(ToolDefinition toolDefinition) {
+        Map<String, Object> toolMap = new HashMap<>();
+        Map<String, Object> function = new HashMap<>();
+        toolMap.put("function", function);
+        toolMap.put("type", "function");
+        function.put("name", toolDefinition.getName());
+        function.put("description", toolDefinition.getDescription());
+        function.put("parameters", toolDefinition.getParameterSchema());
+        return toolMap;
     }
 
     private static String callTool(ToolCall toolCall) {
@@ -228,5 +298,22 @@ public class Main {
         todoParams.put("required", List.of("action"));
 
         return new ToolDefinition("todo", "管理读书进度和待办事项", todoParams, new TodoHandler());
+    }
+
+    public static ToolDefinition getTaskDefinition() {
+        Map<String, Object> taskParams = new HashMap<>();
+        taskParams.put("type", "object");
+        Map<String, Object> taskProps = new HashMap<>();
+
+        Map<String, Object> prompt = new HashMap<>();
+        prompt.put("type", "string");
+        prompt.put("description", "给子Agent的研究任务描述，要清晰具体");
+
+        taskProps.put("prompt", prompt);
+
+        taskParams.put("properties", taskProps);
+        taskParams.put("required", List.of("prompt"));
+
+        return new ToolDefinition("task", "启动一个子Agent，用新的上下文完成研究任务", taskParams, new TaskHandler());
     }
 }
