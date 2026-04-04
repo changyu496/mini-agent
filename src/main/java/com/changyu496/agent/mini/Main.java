@@ -214,6 +214,11 @@ public class Main {
         chapter.put("description", "当前章节号，仅 action = progress时用");
         todoProps.put("chapter", chapter);
 
+        Map<String, Object> chapterTitle = new HashMap<>();
+        chapterTitle.put("type", "string");
+        chapterTitle.put("description", "章节标题，仅 action=progress 时用");
+        todoProps.put("chapterTitle", chapterTitle);
+
         Map<String, Object> progress = new HashMap<>();
         progress.put("type", "string");
         progress.put("description", "当前进度，仅 action = progress时用");
