@@ -204,6 +204,7 @@ public class Main {
                 String toolResult = callTool(toolCall);
                 Message toolResultMessage = new Message();
                 toolResultMessage.setContent(toolResult);
+                toolResultMessage.setName(toolCall.getFunction().getName());
                 toolResultMessage.setRole("tool");
                 toolResultMessage.setToolCallId(toolCall.getId());
                 subMessages.add(toolResultMessage);
