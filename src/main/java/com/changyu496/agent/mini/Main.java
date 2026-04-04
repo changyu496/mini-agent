@@ -17,6 +17,7 @@ public class Main {
         dispatcher.put("search_notes", getSearchNotesDefinition());
         dispatcher.put("todo", getTodoDefinition());
         dispatcher.put("task", getTaskDefinition());
+        dispatcher.put("load_skill", getLoadSkillDefinition());
     }
 
     private static final int MAX_MESSAGE_SIZE = 100;
@@ -151,6 +152,8 @@ public class Main {
                 "- 管理待办和进度（使用 todo 工具）\n" +
                 "- 基于笔记内容展开讨论和追问\n" +
                 todoStatus + "\n" +
+                "【可用技能】\n" +
+                SkillLoader.getInstance().getDescriptions() + "\n" +
                 "【关键规则】\n" +
                 "- 用户提到更新读书进度（读到哪章、换书等）→ 必须调用 todo 工具，action=progress\n" +
                 "- 用户提到添加待办、完成任务 → 必须调用 todo 工具，action=update\n" +
@@ -167,6 +170,7 @@ public class Main {
         tools.add(toolToMap(getSearchNotesDefinition()));
         tools.add(toolToMap(getTodoDefinition()));
         tools.add(toolToMap(getTaskDefinition()));
+        tools.add(toolToMap(getLoadSkillDefinition()));
         return tools;
     }
 
@@ -176,6 +180,7 @@ public class Main {
         tools.add(toolToMap(getWriteFileDefinition()));
         tools.add(toolToMap(getSearchNotesDefinition()));
         tools.add(toolToMap(getTodoDefinition()));
+        tools.add(toolToMap(getLoadSkillDefinition()));
         return tools;
     }
 
@@ -315,5 +320,22 @@ public class Main {
         taskParams.put("required", List.of("prompt"));
 
         return new ToolDefinition("task", "启动一个子Agent，用新的上下文完成研究任务", taskParams, new TaskHandler());
+    }
+
+    public static ToolDefinition getLoadSkillDefinition() {
+        Map<String, Object> loadSkillParams = new HashMap<>();
+        loadSkillParams.put("type", "object");
+        Map<String, Object> loadSkillProps = new HashMap<>();
+
+        Map<String, Object> skillName = new HashMap<>();
+        skillName.put("type", "string");
+        skillName.put("description", "技能名称");
+
+        loadSkillProps.put("name", skillName);
+
+        loadSkillParams.put("properties", loadSkillProps);
+        loadSkillParams.put("required", List.of("name"));
+
+        return new ToolDefinition("load_skill", "获取技能", loadSkillParams, new LoadSkillHandler());
     }
 }
