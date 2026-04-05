@@ -4,6 +4,8 @@ import com.changyu496.agent.mini.dto.Message;
 import com.changyu496.agent.mini.dto.OpenAIResponse;
 import com.changyu496.agent.mini.dto.ToolCall;
 import com.changyu496.agent.mini.tool.*;
+import com.changyu496.agent.mini.tool.handler.*;
+import com.changyu496.agent.mini.tool.manger.TodoManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,9 +25,13 @@ public class Main {
         dispatcher.put("write_file", getWriteFileDefinition());
         dispatcher.put("search_notes", getSearchNotesDefinition());
         dispatcher.put("todo", getTodoDefinition());
-        dispatcher.put("task", getTaskDefinition());
+        dispatcher.put("sub_agent", getSubAgentDefinition());
         dispatcher.put("load_skill", getLoadSkillDefinition());
         dispatcher.put("compact", getCompactDefinition());
+        dispatcher.put("task_create", getTaskCreateDefinition());
+        dispatcher.put("task_update", getTaskUpdateDefinition());
+        dispatcher.put("task_list", getTaskListDefinition());
+        dispatcher.put("task_detail", getTaskDetailDefinition());
     }
 
     private static final int MAX_MESSAGE_SIZE = 100;
@@ -228,8 +234,12 @@ public class Main {
         tools.add(toolToMap(getWriteFileDefinition()));
         tools.add(toolToMap(getSearchNotesDefinition()));
         tools.add(toolToMap(getTodoDefinition()));
-        tools.add(toolToMap(getTaskDefinition()));
+        tools.add(toolToMap(getSubAgentDefinition()));
         tools.add(toolToMap(getLoadSkillDefinition()));
+        tools.add(toolToMap(getTaskCreateDefinition()));
+        tools.add(toolToMap(getTaskUpdateDefinition()));
+        tools.add(toolToMap(getTaskListDefinition()));
+        tools.add(toolToMap(getTaskDetailDefinition()));
         return tools;
     }
 
@@ -261,7 +271,7 @@ public class Main {
         if (Objects.isNull(toolDefinition)) {
             return "未知工具";
         }
-        return toolDefinition.getToolHandler().execute(arguments);
+        return toolDefinition.getToolHandler().execute(arguments, functionName);
     }
 
 
@@ -361,21 +371,21 @@ public class Main {
         return new ToolDefinition("todo", "管理读书进度和待办事项", todoParams, new TodoHandler());
     }
 
-    public static ToolDefinition getTaskDefinition() {
-        Map<String, Object> taskParams = new HashMap<>();
-        taskParams.put("type", "object");
-        Map<String, Object> taskProps = new HashMap<>();
+    public static ToolDefinition getSubAgentDefinition() {
+        Map<String, Object> subAgentParams = new HashMap<>();
+        subAgentParams.put("type", "object");
+        Map<String, Object> sugAgentProps = new HashMap<>();
 
         Map<String, Object> prompt = new HashMap<>();
         prompt.put("type", "string");
         prompt.put("description", "给子Agent的研究任务描述，要清晰具体");
 
-        taskProps.put("prompt", prompt);
+        sugAgentProps.put("prompt", prompt);
 
-        taskParams.put("properties", taskProps);
-        taskParams.put("required", List.of("prompt"));
+        subAgentParams.put("properties", sugAgentProps);
+        subAgentParams.put("required", List.of("prompt"));
 
-        return new ToolDefinition("task", "启动一个子Agent，用新的上下文完成研究任务", taskParams, new TaskHandler());
+        return new ToolDefinition("sub_agent", "启动一个子Agent，用新的上下文完成研究任务", subAgentParams, new SubAgentHandler());
     }
 
     public static ToolDefinition getLoadSkillDefinition() {
@@ -402,4 +412,89 @@ public class Main {
         compactParams.put("required", new ArrayList<>());
         return new ToolDefinition("compact", "压缩对话", compactParams, new CompactHandler());
     }
+
+    public static ToolDefinition getTaskCreateDefinition() {
+        Map<String, Object> taskParams = new HashMap<>();
+        taskParams.put("type", "object");
+
+        Map<String, Object> taskProps = new HashMap<>();
+
+        Map<String, Object> subject = new HashMap<>();
+        subject.put("type", "string");
+        subject.put("description", "任务名称");
+        taskProps.put("subject", subject);
+
+        Map<String, Object> description = new HashMap<>();
+        description.put("type", "string");
+        description.put("description", "任务描述");
+        taskProps.put("description", description);
+
+        taskParams.put("properties", taskProps);
+        taskParams.put("required", List.of("subject"));
+
+        return new ToolDefinition("task_create", "任务创建", taskParams, new TaskHandler());
+    }
+
+    public static ToolDefinition getTaskUpdateDefinition() {
+        Map<String, Object> taskParams = new HashMap<>();
+        taskParams.put("type", "object");
+
+        Map<String, Object> taskProps = new HashMap<>();
+
+        Map<String, Object> taskId = new HashMap<>();
+        taskId.put("type", "integer");
+        taskId.put("description", "任务ID");
+        taskProps.put("taskId", taskId);
+
+        Map<String, Object> status = new HashMap<>();
+        status.put("type", "string");
+        status.put("description", "任务状态，可选值为 pending in_progress completed");
+        taskProps.put("status", status);
+
+        Map<String, Object> addBlockedBy = new HashMap<>();
+        addBlockedBy.put("type", "array");
+        addBlockedBy.put("items", Map.of("type", "integer"));
+        addBlockedBy.put("description", "将指定的任务ID加入当前任务的前置依赖列表，任务必须等这些前置任务完成后才能开始");
+        taskProps.put("addBlockedBy", addBlockedBy);
+
+        Map<String, Object> removeBlockedBy = new HashMap<>();
+        removeBlockedBy.put("type", "array");
+        removeBlockedBy.put("items", Map.of("type", "integer"));
+        removeBlockedBy.put("description", "从当前任务的前置依赖列表中移除指定的任务ID，移除后该前置任务的约束不再生效");
+        taskProps.put("removeBlockedBy", removeBlockedBy);
+
+        taskParams.put("properties", taskProps);
+        taskParams.put("required", List.of("taskId"));
+
+        return new ToolDefinition("task_update", "任务更新", taskParams, new TaskHandler());
+    }
+
+    public static ToolDefinition getTaskListDefinition() {
+        Map<String, Object> taskParams = new HashMap<>();
+        taskParams.put("type", "object");
+
+        Map<String, Object> taskProps = new HashMap<>();
+        taskParams.put("properties", taskProps);
+        taskParams.put("required", new ArrayList<>());
+
+        return new ToolDefinition("task_list", "任务列表", taskParams, new TaskHandler());
+    }
+
+    public static ToolDefinition getTaskDetailDefinition() {
+        Map<String, Object> taskParams = new HashMap<>();
+        taskParams.put("type", "object");
+
+        Map<String, Object> taskProps = new HashMap<>();
+
+        Map<String, Object> taskId = new HashMap<>();
+        taskId.put("type", "integer");
+        taskId.put("description", "任务ID");
+        taskProps.put("taskId", taskId);
+
+        taskParams.put("properties", taskProps);
+        taskParams.put("required", List.of("taskId"));
+
+        return new ToolDefinition("task_list", "任务列表", taskParams, new TaskHandler());
+    }
+
 }

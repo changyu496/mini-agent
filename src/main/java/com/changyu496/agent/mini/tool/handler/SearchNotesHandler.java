@@ -1,4 +1,4 @@
-package com.changyu496.agent.mini.tool;
+package com.changyu496.agent.mini.tool.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -14,7 +14,7 @@ public class SearchNotesHandler implements ToolHandler {
     private static final String DEFAULT_PATH = "/Users/changyu/.reading-agent/workspace";
 
     @Override
-    public String execute(String argJson) {
+    public String execute(String argJson,String functionName) {
         StringBuilder stringBuilder = new StringBuilder();
         Map arg;
         ObjectMapper objectMapper = new ObjectMapper();

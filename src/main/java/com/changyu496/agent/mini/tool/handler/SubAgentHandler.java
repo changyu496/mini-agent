@@ -1,4 +1,4 @@
-package com.changyu496.agent.mini.tool;
+package com.changyu496.agent.mini.tool.handler;
 
 import com.changyu496.agent.mini.Main;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -6,9 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Map;
 
-public class TaskHandler implements ToolHandler {
+public class SubAgentHandler implements ToolHandler {
     @Override
-    public String execute(String argJson) {
+    public String execute(String argJson,String functionName) {
         ObjectMapper argMapper = new ObjectMapper();
         try {
             Map<String, String> arg = argMapper.readValue(argJson, Map.class);

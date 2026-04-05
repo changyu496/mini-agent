@@ -1,5 +1,6 @@
-package com.changyu496.agent.mini.tool;
+package com.changyu496.agent.mini.tool.handler;
 
+import com.changyu496.agent.mini.tool.SkillLoader;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -8,7 +9,7 @@ import java.util.Map;
 public class LoadSkillHandler implements ToolHandler {
 
     @Override
-    public String execute(String argJson) {
+    public String execute(String argJson,String functionName) {
 
         ObjectMapper objectMapper = new ObjectMapper();
         try {

@@ -1,4 +1,4 @@
-package com.changyu496.agent.mini.tool;
+package com.changyu496.agent.mini.tool.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -10,7 +10,7 @@ import java.util.Map;
 
 public class ReadFileHandler implements ToolHandler {
     @Override
-    public String execute(String argJson) {
+    public String execute(String argJson,String functionName) {
         ObjectMapper objectMapper = new ObjectMapper();
         String path = "";
         try {

@@ -1,4 +1,4 @@
-package com.changyu496.agent.mini.tool;
+package com.changyu496.agent.mini.tool.manger;
 
 import com.changyu496.agent.mini.dto.TodoItem;
 import com.changyu496.agent.mini.dto.TodoState;
