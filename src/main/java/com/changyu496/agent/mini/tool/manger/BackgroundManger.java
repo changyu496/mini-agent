@@ -4,10 +4,7 @@ import com.changyu496.agent.mini.dto.JobInfo;
 import com.changyu496.agent.mini.dto.JobNotification;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 public class BackgroundManger {
 
@@ -19,17 +16,17 @@ public class BackgroundManger {
 
     private static final BackgroundManger instance = new BackgroundManger();
 
-    public BackgroundManger getInstance() {
+    public static BackgroundManger getInstance() {
         return instance;
     }
 
     private BackgroundManger() {
         jobInfoMap = new ConcurrentHashMap<>();
-        jobNotificationQueue = new ArrayDeque<>();
+        jobNotificationQueue = new ConcurrentLinkedQueue<>();
         executor = Executors.newCachedThreadPool();
     }
 
-    private String submit(String type, String description, Runnable job) {
+    public String submit(String type, String description, Runnable job) {
         String jobId = UUID.randomUUID().toString();
         JobInfo jobInfo = new JobInfo();
         jobInfo.setJobId(jobId);
