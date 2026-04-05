@@ -494,7 +494,7 @@ public class Main {
         taskParams.put("properties", taskProps);
         taskParams.put("required", List.of("taskId"));
 
-        return new ToolDefinition("task_list", "任务列表", taskParams, new TaskHandler());
+        return new ToolDefinition("task_detail", "任务列表", taskParams, new TaskHandler());
     }
 
 }

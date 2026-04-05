@@ -61,8 +61,15 @@ public class TaskManger {
         Task task = read(taskId);
         if (Objects.nonNull(task)) {
             task.setStatus(status);
-            task.getBlockedBy().addAll(addBlockedBy);
-            task.getBlockedBy().removeAll(removeBlockedBy);
+            if ("completed".equals(status)) {
+                clearDependency(taskId);
+            }
+            if (Objects.nonNull(task.getBlockedBy()) && !addBlockedBy.isEmpty()) {
+                task.getBlockedBy().addAll(addBlockedBy);
+            }
+            if (Objects.nonNull(task.getBlockedBy()) && !removeBlockedBy.isEmpty()) {
+                task.getBlockedBy().removeAll(removeBlockedBy);
+            }
             save(task);
         }
     }
@@ -79,16 +86,28 @@ public class TaskManger {
         Path taskPath = Path.of(DEFAULT_PATH);
         List<Task> tasks = new ArrayList<>();
         try {
-            Files.list(taskPath).forEach(filePath -> {
-                Task task = read(filePath);
-                if (Objects.nonNull(task)) {
-                    tasks.add(task);
-                }
-            });
+            try (var stream = Files.list(taskPath)) {
+                stream.forEach(filePath -> {
+                    Task task = read(filePath);
+                    if (Objects.nonNull(task)) {
+                        tasks.add(task);
+                    }
+                });
+            }
         } catch (Exception e) {
             System.out.println("获取全部任务遇到异常" + e.getMessage());
         }
         return tasks;
+    }
+
+    private void clearDependency(int taskId) {
+        List<Task> allTask = getAllTask();
+        for (Task task : allTask) {
+            if (Objects.nonNull(task.getBlockedBy()) && task.getBlockedBy().contains(taskId)) {
+                task.getBlockedBy().remove(taskId);
+                save(task);
+            }
+        }
     }
 
     private void addBlockedBy(int taskId, int blockedTaskId) {
