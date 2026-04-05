@@ -23,6 +23,6 @@ public class Task {
                 "任务标题：" + subject + "\n" +
                 "任务描述：" + description + "\n" +
                 "任务状态：" + status + "\n" +
-                "前置任务ID为" + blockedBy.toString() + "\n";
+                "前置任务ID为" + (blockedBy == null ? "无" : blockedBy.toString());
     }
 }
