@@ -5,6 +5,7 @@ import com.changyu496.agent.mini.tool.manger.TaskManger;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -26,8 +27,10 @@ public class TaskHandler implements ToolHandler {
                 int taskId = Integer.parseInt(String.valueOf(map.get("taskId")));
                 String status = String.valueOf(map.get("status"));
                 // 从自己的里面移除
-                List<Integer> addBlockedBy = (List<Integer>) map.get("addBlockedBy");
-                List<Integer> removeBlockedBy = (List<Integer>) map.get("removeBlockedBy");
+                List<Integer> addBlockedByRaw = (List<Integer>) map.get("addBlockedBy");
+                List<Integer> removeBlockedByRaw = (List<Integer>) map.get("removeBlockedBy");
+                List<Integer> addBlockedBy = addBlockedByRaw != null ? addBlockedByRaw : new ArrayList<>();
+                List<Integer> removeBlockedBy = removeBlockedByRaw != null ? removeBlockedByRaw : new ArrayList<>();
                 instance.update(taskId, status, addBlockedBy, removeBlockedBy);
                 return "更新成功";
             }
