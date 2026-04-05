@@ -104,7 +104,7 @@ public class TaskManger {
         List<Task> allTask = getAllTask();
         for (Task task : allTask) {
             if (Objects.nonNull(task.getBlockedBy()) && task.getBlockedBy().contains(taskId)) {
-                task.getBlockedBy().remove(taskId);
+                task.getBlockedBy().remove((Integer) taskId);
                 save(task);
             }
         }

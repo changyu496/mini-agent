@@ -113,9 +113,6 @@ public class Main {
             if (msg.getRole().equals("tool")) {
                 toolResultCount++;
                 if (toolResultCount > 3) {
-                    System.out.println("[microCompact] 替换: " + msg.getName()
-                            + " -> " + msg.getContent().substring(0, Math.min(50, msg.getContent().length())) + "...");
-
                     msg.setContent("[Previously used {" + historyMessages.get(i).getName() + "}]");
                 }
             }
@@ -494,7 +491,7 @@ public class Main {
         taskParams.put("properties", taskProps);
         taskParams.put("required", List.of("taskId"));
 
-        return new ToolDefinition("task_detail", "任务列表", taskParams, new TaskHandler());
+        return new ToolDefinition("task_detail", "获取指定任务的详细信息", taskParams, new TaskHandler());
     }
 
 }
