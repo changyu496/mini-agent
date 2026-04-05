@@ -12,7 +12,7 @@ import java.util.Map;
 public class TodoHandler implements ToolHandler {
 
     @Override
-    public String execute(String argJson) {
+    public String execute(String argJson, String functionName) {
         ObjectMapper objectMapper = new ObjectMapper();
         TodoManager todoManager = TodoManager.getInstance();
         try {
