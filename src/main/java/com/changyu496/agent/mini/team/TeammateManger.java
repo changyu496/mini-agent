@@ -145,7 +145,8 @@ public class TeammateManger {
                     Map<String, Object> extra = new HashMap<>();
                     extra.put("request_id", requestId);
                     extra.put("approve", true);
-                    messageBus.send(name, "lead", "Shutting down gracefully", "shutdown_request", extra);
+                    // 通知 lead，teammate 收到了并同意关闭
+                    messageBus.send(name, "lead", "Shutting down gracefully", "shutdown_response", extra);
                     shouldExit.set(true);
                     break;
                 }

@@ -18,7 +18,7 @@ public class ShutdownRequestHandler implements ToolHandler {
             String teammate = String.valueOf(map.get("teammate"));
             TeammateManger instance = TeammateManger.getInstance(Path.of(System.getProperty("user.home") + "/.team"));
 
-            String requestId = UUID.randomUUID().toString().toString().substring(0, 8);
+            String requestId = UUID.randomUUID().toString().substring(0, 8);
 
             Map<String, Object> req = new HashMap<>();
             req.put("target", teammate);
@@ -28,7 +28,7 @@ public class ShutdownRequestHandler implements ToolHandler {
             Map<String, Object> extra = new HashMap<>();
             extra.put("request_id", requestId);
             MessageBus messageBus = instance.getMessageBus();
-            messageBus.send("lead", teammate, "请优雅关闭", "shutdown_request", extra);
+            messageBus.send("lead", teammate, "请优雅关闭", "shutdown_response", extra);
 
             return "Shutdown request 已经发送给" + teammate + "request_id:" + requestId;
 
