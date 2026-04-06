@@ -38,8 +38,8 @@ public class TeammateManger {
         return messageBus;
     }
 
-    public static synchronized TeammateManger getInstance(Path teamDir){
-        if (instance == null){
+    public static synchronized TeammateManger getInstance(Path teamDir) {
+        if (instance == null) {
             instance = new TeammateManger(teamDir);
         }
         return instance;
@@ -101,7 +101,7 @@ public class TeammateManger {
         List<Message> messages = new ArrayList<>();
         Message system = new Message();
         system.setRole("system");
-        system.setContent("你是" + name + "你的角色设定为" + role);
+        system.setContent("你是" + name + "你的角色设定为" + role + "。完成任务后，使用 send_message 工具把结果发给 lead。");
         messages.add(system);
         Message initTask = new Message();
         initTask.setRole("user");
@@ -124,7 +124,18 @@ public class TeammateManger {
                 }
             }
             // LLM
-            AgentRunner.run(OpenAIHttpClient.getInstance(), messages, buildTeammateTools(), getTeammateExecutor(name), null, maxRound);
+            String result = AgentRunner.run(OpenAIHttpClient.getInstance(), messages, buildTeammateTools(), getTeammateExecutor(name), null, maxRound);
+            if (result != null && !result.isEmpty()) {
+                List<Map<String, Object>> nextInbox = messageBus.readInbox(name);
+                if (nextInbox.isEmpty()) {
+                    Member m = findMember(name);
+                    if (m != null) {
+                        m.setStatus("idle");
+                        saveConfig();
+                    }
+                    break;
+                }
+            }
             Member member = findMember(name);
             if (member != null && "shutdown".equals(member.getStatus())) {
                 break;
