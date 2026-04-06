@@ -25,7 +25,7 @@ public class MessageBus {
         }
     }
 
-    public void send(String sender, String to, String content, String messageType) {
+    public String send(String sender, String to, String content, String messageType) {
         Map<String, Object> message = new HashMap<>();
         message.put("type", messageType);
         message.put("sender", sender);
@@ -39,7 +39,7 @@ public class MessageBus {
                 Files.createFile(inboxPath);
             } catch (IOException e) {
                 System.out.println("创建消息遇到异常" + e.getMessage());
-                return;
+                return "发生消息失败，遇到异常" + e.getMessage();
             }
         }
         try {
@@ -47,6 +47,7 @@ public class MessageBus {
         } catch (IOException e) {
             System.out.println("写入消息文件遇到异常" + e.getMessage());
         }
+        return "消息发送成功";
     }
 
     public List<Map<String, Object>> readInbox(String name) {

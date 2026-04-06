@@ -58,8 +58,6 @@ public class Main {
 
     public static List<Message> historyMessages = new ArrayList<>();
 
-    public static OpenAIHttpClient client = new OpenAIHttpClient();
-
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         buildSystemPrompt(historyMessages);
@@ -84,7 +82,7 @@ public class Main {
                     return def.getToolHandler().execute(argsJson, toolName);
                 });
                 AgentRunner.NotificationHandler mainNotificationHandler = Main::injectBackgroundNotifications;
-                String content = AgentRunner.run(client, historyMessages, regTool(), mainExecutor, mainNotificationHandler, -1);
+                String content = AgentRunner.run(OpenAIHttpClient.getInstance(), historyMessages, regTool(), mainExecutor, mainNotificationHandler, -1);
                 System.out.println("assistant:" + content);
                 microCompact(historyMessages);
                 roundSinceTodo++;
@@ -158,7 +156,6 @@ public class Main {
             return historyMessages;
         }
         // 做摘要
-        OpenAIHttpClient openAIHttpClient = new OpenAIHttpClient();
         Message system = new Message();
         system.setRole("system");
         system.setContent("请根据内容帮我最摘要，返回[摘要信息]+[确认消息]");
@@ -168,7 +165,7 @@ public class Main {
         user.setContent(stringBuilder.toString());
         summaryMessage.add(system);
         summaryMessage.add(user);
-        OpenAIResponse openAIResponse = openAIHttpClient.call(summaryMessage, new ArrayList<>());
+        OpenAIResponse openAIResponse = OpenAIHttpClient.getInstance().call(summaryMessage, new ArrayList<>());
         String summaryText = openAIResponse.getChoices().get(0).getMessage().getContent();
         List<Message> compact = new ArrayList<>();
         Message summary = new Message();
@@ -201,7 +198,7 @@ public class Main {
             ToolDefinition def = mainDispatcher.get(toolName);
             return def.getToolHandler().execute(argsJson, toolName);
         });
-        return AgentRunner.run(client, subMessages, regBasicTool(), subAgentExecutor, null, 30);
+        return AgentRunner.run(OpenAIHttpClient.getInstance(), subMessages, regBasicTool(), subAgentExecutor, null, 30);
     }
 
     private static void buildSystemPrompt(List<Message> historyMessages) {
@@ -239,7 +236,7 @@ public class Main {
         return tools;
     }
 
-    private static Map<String, Object> toolToMap(ToolDefinition toolDefinition) {
+    public static Map<String, Object> toolToMap(ToolDefinition toolDefinition) {
         Map<String, Object> toolMap = new HashMap<>();
         Map<String, Object> function = new HashMap<>();
         toolMap.put("function", function);
@@ -248,16 +245,6 @@ public class Main {
         function.put("description", toolDefinition.getDescription());
         function.put("parameters", toolDefinition.getParameterSchema());
         return toolMap;
-    }
-
-    private static String callTool(ToolCall toolCall) {
-        String functionName = toolCall.getFunction().getName();
-        String arguments = toolCall.getFunction().getArguments();
-        ToolDefinition toolDefinition = mainDispatcher.get(functionName);
-        if (Objects.isNull(toolDefinition)) {
-            return "未知工具";
-        }
-        return toolDefinition.getToolHandler().execute(arguments, functionName);
     }
 
 

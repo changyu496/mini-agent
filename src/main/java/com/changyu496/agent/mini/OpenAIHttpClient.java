@@ -18,13 +18,20 @@ public class OpenAIHttpClient {
 
     private OkHttpClient client;
 
-    public OpenAIHttpClient() {
+    private static final OpenAIHttpClient instance = new OpenAIHttpClient();
+
+    public static OpenAIHttpClient getInstance(){
+        return instance;
+    }
+
+    private OpenAIHttpClient() {
         client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
                 .writeTimeout(60, TimeUnit.SECONDS)
                 .callTimeout(90, TimeUnit.SECONDS)
                 .build();
+
     }
 
     public OpenAIResponse call(List<Message> messages, List<Map<String, Object>> tools) {

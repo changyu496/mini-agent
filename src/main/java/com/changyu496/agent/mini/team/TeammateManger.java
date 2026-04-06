@@ -1,17 +1,18 @@
 package com.changyu496.agent.mini.team;
 
+import com.changyu496.agent.mini.OpenAIHttpClient;
+import com.changyu496.agent.mini.agent.AgentRunner;
 import com.changyu496.agent.mini.agent.Message;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import static com.changyu496.agent.mini.Main.*;
 
 public class TeammateManger {
 
@@ -112,13 +113,114 @@ public class TeammateManger {
                 }
             }
             // LLM
-
+            AgentRunner.run(OpenAIHttpClient.getInstance(), messages, buildTeammateTools(), getTeammateExecutor(name), null, 50);
             Member member = findMember(name);
             if (member != null && "shutdown".equals(member.getStatus())) {
                 break;
             }
             round++;
         }
+    }
+
+    public AgentRunner.ToolExecutor getTeammateExecutor(String name) {
+        return (toolName, argsJson) -> {
+            switch (toolName) {
+                case "read_file": {
+                    // argsJson 格式: {"path": "/some/file.txt"}
+                    Map<String, String> args = parseArgs(argsJson);
+                    String path = args.get("path");
+                    try {
+                        return Files.readString(Path.of(path));
+                    } catch (Exception e) {
+                        return "读取文件失败: " + e.getMessage();
+                    }
+                }
+                case "write_file": {
+                    Map<String, String> args = parseArgs(argsJson);
+                    String path = args.get("path");
+                    String content = args.get("content");
+                    try {
+                        Files.writeString(Path.of(path), content);
+                        return "写入成功: " + path;
+                    } catch (Exception e) {
+                        return "写入文件失败: " + e.getMessage();
+                    }
+                }
+                case "bash": {
+                    Map<String, String> args = parseArgs(argsJson);
+                    String command = args.get("command");
+                    try {
+                        Process p = Runtime.getRuntime().exec(command);
+                        String output = new String(p.getInputStream().readAllBytes());
+                        String error = new String(p.getErrorStream().readAllBytes());
+                        return output + error;
+                    } catch (Exception e) {
+                        return "命令执行失败: " + e.getMessage();
+                    }
+                }
+                case "send_message": {
+                    // argsJson 格式: {"to": "alice", "content": "hello"}
+                    Map<String, String> args = parseArgs(argsJson);
+                    String to = args.get("to");
+                    String content = args.get("content");
+                    return messageBus.send(name, to, content, "message");
+                }
+                default:
+                    return "未知工具: " + toolName;
+            }
+        };
+    }
+
+    /**
+     * Teammate 可用的工具列表（受限子集）
+     */
+    public static List<Map<String, Object>> buildTeammateTools() {
+        List<Map<String, Object>> tools = new ArrayList<>();
+
+        tools.add(tool("read_file", "读取文件",
+                Map.of("path", Map.of("type", "string", "description", "文件路径"))));
+
+        tools.add(tool("write_file", "写入文件",
+                Map.of(
+                        "path", Map.of("type", "string", "description", "文件路径"),
+                        "content", Map.of("type", "string", "description", "写入内容")
+                )));
+
+        tools.add(tool("bash", "执行Shell命令",
+                Map.of("command", Map.of("type", "string", "description", "Shell命令"))));
+
+        tools.add(tool("send_message", "给队友发消息",
+                Map.of(
+                        "to", Map.of("type", "string", "description", "队友名字"),
+                        "content", Map.of("type", "string", "description", "消息内容")
+                )));
+
+        return tools;
+    }
+
+    private Map<String, String> parseArgs(String argsJson) {
+        Map<String, String> result = new HashMap<>();
+        try {
+            Map<String, Object> map = new ObjectMapper().readValue(argsJson, Map.class);
+            for (Map.Entry<String, Object> e : map.entrySet()) {
+                result.put(e.getKey(), String.valueOf(e.getValue()));
+            }
+        } catch (Exception e) {
+            // 解析失败返回空 map
+        }
+        return result;
+    }
+
+    private static Map<String, Object> tool(String name, String description,
+                                            Map<String, Object> properties) {
+        Map<String, Object> tool = new HashMap<>();
+        tool.put("name", name);
+        tool.put("description", description);
+        Map<String, Object> params = new HashMap<>();
+        params.put("type", "object");
+        params.put("properties", properties);
+        tool.put("parameters", params);
+        return tool;
     }
 
     public String listAll() {
