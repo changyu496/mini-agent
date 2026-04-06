@@ -45,7 +45,7 @@ public class Main {
         mainDispatcher.put("send_message", getSendMessageDefinition());
         mainDispatcher.put("broadcast", getBroadcastDefinition());
         mainDispatcher.put("shutdown_request", getShutdownRequestDefinition());
-        mainDispatcher.put("plan_approval", getPlanApprovalDefinition());
+        mainDispatcher.put("plan_approve", getPlanApproveDefinition());
     }
 
     private static final Map<String, ToolDefinition> subAgentDispatcher = new HashMap<>();
@@ -134,6 +134,7 @@ public class Main {
                 Message m = new Message();
                 m.setRole("user");
                 m.setContent("[队友消息]来自" + teammateMessage.get("from") + ":" + teammateMessage.get("content"));
+                System.out.println("=== DEBUG: lead inbox has " + teammateMessages.size() + " messages ===");
                 historyMessages.add(m);
             }
         }
@@ -250,7 +251,8 @@ public class Main {
         tools.add(toolToMap(getSendMessageDefinition()));
         tools.add(toolToMap(getReadInboxDefinition()));
         tools.add(toolToMap(getBroadcastDefinition()));
-
+        tools.add(toolToMap(getShutdownRequestDefinition()));
+        tools.add(toolToMap(getPlanApproveDefinition()));
         return tools;
     }
 
@@ -609,16 +611,16 @@ public class Main {
                 shutdownRequestParams, new ShutdownRequestHandler());
     }
 
-    public static ToolDefinition getPlanApprovalDefinition() {
+    public static ToolDefinition getPlanApproveDefinition() {
         Map<String, Object> planApprovalParams;
-        planApprovalParams = teamTool("plan_approval", "审批队友的计划请求",
+        planApprovalParams = teamTool("plan_approve", "审批队友的计划请求",
                 Map.of(
                         "request_id", Map.of("type", "string", "description", "计划请求的ID"),
                         "approve", Map.of("type", "boolean", "description", "true同意执行，false拒绝"),
                         "feedback", Map.of("type", "string", "description", "审批意见")
                 ));
-        return new ToolDefinition("plan_approval", "审批队友的计划请求",
-                planApprovalParams, new PlanApprovalHandler());
+        return new ToolDefinition("plan_approve", "审批队友的计划请求",
+                planApprovalParams, new PlanApproveHandler());
     }
 
 }

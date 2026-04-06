@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PlanApprovalHandler implements ToolHandler {
+public class PlanApproveHandler implements ToolHandler {
 
     @Override
     public String execute(String argJson, String functionName) {
