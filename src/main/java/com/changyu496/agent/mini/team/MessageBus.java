@@ -25,12 +25,16 @@ public class MessageBus {
         }
     }
 
-    public String send(String sender, String to, String content, String messageType) {
+    public String send(String sender, String to, String content, String messageType, Map<String, Object> extra) {
         Map<String, Object> message = new HashMap<>();
         message.put("type", messageType);
         message.put("sender", sender);
         message.put("content", content);
         message.put("timestamp", System.currentTimeMillis());
+
+        if (Objects.nonNull(extra)) {
+            message.putAll(extra);
+        }
 
         Path inboxPath = inboxDir.resolve(to + ".jsonl");
 
@@ -48,6 +52,10 @@ public class MessageBus {
             System.out.println("写入消息文件遇到异常" + e.getMessage());
         }
         return "消息发送成功";
+    }
+
+    public String send(String sender, String to, String content, String messageType) {
+        return send(sender, to, content, messageType, null);
     }
 
     public List<Map<String, Object>> readInbox(String name) {

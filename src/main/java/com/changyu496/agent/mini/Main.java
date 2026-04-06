@@ -44,6 +44,8 @@ public class Main {
         mainDispatcher.put("read_inbox", getReadInboxDefinition());
         mainDispatcher.put("send_message", getSendMessageDefinition());
         mainDispatcher.put("broadcast", getBroadcastDefinition());
+        mainDispatcher.put("shutdown_request", getShutdownRequestDefinition());
+        mainDispatcher.put("plan_approval", getPlanApprovalDefinition());
     }
 
     private static final Map<String, ToolDefinition> subAgentDispatcher = new HashMap<>();
@@ -596,5 +598,27 @@ public class Main {
         return new ToolDefinition("broadcast", "给所有队友广播消息", broadcastParams, new BroadcastHandler());
     }
 
+    public static ToolDefinition getShutdownRequestDefinition() {
+        Map<String, Object> broadcastParams;
+        Map<String, Object> shutdownRequestParams;
+        shutdownRequestParams = teamTool("shutdown_request", "主动关闭某个队友Agent",
+                Map.of(
+                        "teammate", Map.of("type", "string", "description", "要关闭的队友名字")
+                ));
+        return new ToolDefinition("shutdown_request", "主动关闭某个队友Agent",
+                shutdownRequestParams, new ShutdownRequestHandler());
+    }
+
+    public static ToolDefinition getPlanApprovalDefinition() {
+        Map<String, Object> planApprovalParams;
+        planApprovalParams = teamTool("plan_approval", "审批队友的计划请求",
+                Map.of(
+                        "request_id", Map.of("type", "string", "description", "计划请求的ID"),
+                        "approve", Map.of("type", "boolean", "description", "true同意执行，false拒绝"),
+                        "feedback", Map.of("type", "string", "description", "审批意见")
+                ));
+        return new ToolDefinition("plan_approval", "审批队友的计划请求",
+                planApprovalParams, new PlanApprovalHandler());
+    }
 
 }

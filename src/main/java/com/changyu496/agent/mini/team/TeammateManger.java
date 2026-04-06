@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class TeammateManger {
@@ -27,11 +28,22 @@ public class TeammateManger {
 
     private static TeammateManger instance;
 
+    private static final Map<String, Map<String, Object>> shutdownRequests = new ConcurrentHashMap<>();
+    private static final Map<String, Map<String, Object>> planRequests = new ConcurrentHashMap<>();
+
     private TeammateManger(Path teamDir) {
         configPath = teamDir.resolve("config.json");
         inboxDirPath = teamDir.resolve("inbox");
         this.messageBus = new MessageBus(inboxDirPath);
         loadConfig(configPath);
+    }
+
+    public static Map<String, Map<String, Object>> getShutdownRequests() {
+        return shutdownRequests;
+    }
+
+    public static Map<String, Map<String, Object>> getPlanRequests() {
+        return planRequests;
     }
 
     public MessageBus getMessageBus() {
@@ -111,6 +123,8 @@ public class TeammateManger {
         int maxRound = 50;
         int round = 0;
 
+        AtomicBoolean shouldExit = new AtomicBoolean(false);  // ← 新增
+
         while (round < maxRound) {
             List<Map<String, Object>> inbox = messageBus.readInbox(name);
             for (Map<String, Object> msg : inbox) {
@@ -122,9 +136,28 @@ public class TeammateManger {
                 } catch (JsonProcessingException e) {
                     System.out.println("读取收件箱内容解析遇到异常" + e.getMessage());
                 }
+
+                if ("shutdown_request".equals(msg.get("type"))) {
+                    String requestId = String.valueOf(msg.get("request_id"));
+                    Map<String, Object> req = new HashMap<>();
+                    req.put("status", "approved");
+                    shutdownRequests.put(requestId, req);
+                    Map<String, Object> extra = new HashMap<>();
+                    extra.put("request_id", requestId);
+                    extra.put("approve", true);
+                    messageBus.send(name, "lead", "Shutting down gracefully", "shutdown_request", extra);
+                    shouldExit.set(true);
+                    break;
+                }
             }
             // LLM
-            String result = AgentRunner.run(OpenAIHttpClient.getInstance(), messages, buildTeammateTools(), getTeammateExecutor(name), null, maxRound);
+            String result = AgentRunner.run(
+                    OpenAIHttpClient.getInstance(),
+                    messages,
+                    buildTeammateTools(),
+                    getTeammateExecutor(name, shouldExit),
+                    null,
+                    maxRound);
             if (result != null && !result.isEmpty()) {
                 List<Map<String, Object>> nextInbox = messageBus.readInbox(name);
                 if (nextInbox.isEmpty()) {
@@ -136,6 +169,9 @@ public class TeammateManger {
                     break;
                 }
             }
+            if (shouldExit.get()) {
+                break;
+            }
             Member member = findMember(name);
             if (member != null && "shutdown".equals(member.getStatus())) {
                 break;
@@ -144,7 +180,7 @@ public class TeammateManger {
         }
     }
 
-    public AgentRunner.ToolExecutor getTeammateExecutor(String name) {
+    public AgentRunner.ToolExecutor getTeammateExecutor(String name, AtomicBoolean shouldExit) {
         return (toolName, argsJson) -> {
             switch (toolName) {
                 case "read_file": {
@@ -187,6 +223,38 @@ public class TeammateManger {
                     String content = args.get("content");
                     return messageBus.send(name, to, content, "message");
                 }
+                case "shutdown_response": {
+                    Map<String, String> args = parseArgs(argsJson);
+                    String requestId = args.get("request_id");
+                    boolean approve = Boolean.parseBoolean(args.get("approve"));
+                    Map<String, Object> req = new HashMap<>();
+                    req.put("status", approve ? "approved" : "rejected");
+                    shutdownRequests.put(requestId, req);
+                    Map<String, Object> extra = new HashMap<>();
+                    extra.put("request_id", requestId);
+                    extra.put("approve", approve);
+                    messageBus.send(name, "lead", args.getOrDefault("reason", ""), "shutdown_response", extra);
+                    if (approve) {
+                        shouldExit.set(true);
+                    }
+                    return "Shutdown " + (approve ? "approved" : "rejected");
+                }
+                case "plan_approve": {
+                    Map<String, String> args = parseArgs(argsJson);
+                    String plan = args.get("plan");
+                    String requestId = UUID.randomUUID().toString().substring(0, 8);
+                    Map<String, Object> req = new HashMap<>();
+                    req.put("from", name);
+                    req.put("plan", plan);
+                    req.put("status", "pending");
+                    planRequests.put(requestId, req);
+                    // 发给lead
+                    Map<String, Object> extra = new HashMap<>();
+                    extra.put("request_id", requestId);
+                    extra.put("plan", plan);
+                    messageBus.send(name, "lead", plan, "plan_approval_response", extra);
+                    return "Plan submitted (id=" + requestId + "), waiting for approval";
+                }
                 default:
                     return "未知工具: " + toolName;
             }
@@ -216,6 +284,15 @@ public class TeammateManger {
                         "to", Map.of("type", "string", "description", "队友名字"),
                         "content", Map.of("type", "string", "description", "消息内容")
                 )));
+
+        tools.add(tool("shutdown_response", "响应关闭请求",
+                Map.of(
+                        "request_id", Map.of("type", "string", "description", "请求ID"),
+                        "approve", Map.of("type", "boolean", "description", "true同意，false拒绝"),
+                        "reason", Map.of("type", "string", "description", "理由")
+                )));
+        tools.add(tool("plan_approve", "提交计划给Leader审批",
+                Map.of("plan", Map.of("type", "string", "description", "计划内容"))));
 
         return tools;
     }
