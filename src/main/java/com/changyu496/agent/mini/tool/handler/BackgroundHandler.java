@@ -4,14 +4,12 @@ import com.changyu496.agent.mini.tool.manger.BackgroundManger;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Callable;
 
 public class BackgroundHandler implements ToolHandler {
     @Override
     public String execute(String argJson, String functionName) {
-        Map<String, Object> argMap = new HashMap<>();
+        Map<String, Object> argMap;
         ObjectMapper objectMapper = new ObjectMapper();
         try {
             argMap = objectMapper.readValue(argJson, Map.class);
@@ -36,6 +34,6 @@ public class BackgroundHandler implements ToolHandler {
         } catch (JsonProcessingException e) {
             return "后台任务的参数解析异常" + e.getMessage();
         }
-        return null;
+        return "不支持的操作，请检查";
     }
 }

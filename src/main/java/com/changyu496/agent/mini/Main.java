@@ -111,7 +111,7 @@ public class Main {
         }
     }
 
-    public static void injectBackgroundNotifications(List<Message> historyMessages) {
+    private static void injectBackgroundNotifications(List<Message> historyMessages) {
         List<JobNotification> jobNotifications = BackgroundManger.getInstance().drainNotifications();
         StringBuilder stringBuilder = new StringBuilder();
         if (Objects.nonNull(jobNotifications) && jobNotifications.size() > 0) {
