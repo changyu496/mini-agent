@@ -37,7 +37,7 @@ public class BackgroundManger {
         jobInfo.setCreateAt(new Date());
 
         jobInfoMap.put(jobId, jobInfo);
-        Future<?> future = executor.submit(() -> {
+        executor.submit(() -> {
             String result;
             String status = "completed";
             try {
