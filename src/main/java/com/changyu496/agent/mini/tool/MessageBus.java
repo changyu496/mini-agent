@@ -1,0 +1,78 @@
+package com.changyu496.agent.mini.tool;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.*;
+
+public class MessageBus {
+
+    private final Path inboxDir;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private static final String DEFAULT_MESSAGE_PATH = System.getProperty("user.home") + "/.team";
+
+    public MessageBus(Path inboxDir) {
+        this.inboxDir = inboxDir;
+        try {
+            Files.createDirectories(inboxDir);
+        } catch (IOException e) {
+            System.out.println("创建目录遇到异常" + e.getMessage());
+        }
+    }
+
+    public void send(String sender, String to, String content, String messageType) {
+        Map<String, Object> message = new HashMap<>();
+        message.put("type", messageType);
+        message.put("sender", sender);
+        message.put("content", content);
+        message.put("timestamp", System.currentTimeMillis());
+
+        Path inboxPath = inboxDir.resolve(to + ".jsonl");
+
+        if (!Files.exists(inboxPath)) {
+            try {
+                Files.createFile(inboxPath);
+            } catch (IOException e) {
+                System.out.println("创建消息遇到异常" + e.getMessage());
+                return;
+            }
+        }
+        try {
+            Files.writeString(inboxPath, objectMapper.writeValueAsString(message) + "\n", StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            System.out.println("写入消息文件遇到异常" + e.getMessage());
+        }
+    }
+
+    public List<Map<String, Object>> readInbox(String name) {
+        Path inboxPath = inboxDir.resolve("name" + ".jsonl");
+        if (!Files.exists(inboxPath)) {
+            return new ArrayList<>();
+        }
+        List<Map<String, Object>> messages = new ArrayList<>();
+        try {
+            String content = Files.readString(inboxPath);
+            if (Objects.isNull(content) || content.isBlank()) {
+                return messages;
+            }
+            for (String line : content.split("\n")) {
+                if (!line.isBlank()) {
+                    messages.add(objectMapper.readValue(line, Map.class));
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("读取消息记录遇到异常");
+        }
+        try {
+            Files.writeString(inboxPath, "");
+        } catch (IOException e) {
+            System.out.println("清空消息记录遇到异常");
+        }
+        return messages;
+    }
+}
