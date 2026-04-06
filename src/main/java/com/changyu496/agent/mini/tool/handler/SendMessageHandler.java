@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Path;
 import java.util.Map;
 
-public class SendMessageDefinition implements ToolHandler {
+public class SendMessageHandler implements ToolHandler {
 
     @Override
     public String execute(String argJson, String functionName) {

@@ -39,9 +39,9 @@ public class Main {
         mainDispatcher.put("background_submit", getBackgroundSubmitDefinition());
         mainDispatcher.put("background_check", getBackgroundCheckDefinition());
         mainDispatcher.put("spawn_teammate", getSpawnTeammateDefinition());
-        mainDispatcher.put("list_teammate", getListTeammatesDefinition());
+        mainDispatcher.put("list_teammates", getListTeammatesDefinition());
         mainDispatcher.put("read_inbox", getReadInboxDefinition());
-        mainDispatcher.put("send_massage", getSendMessageDefinition());
+        mainDispatcher.put("send_message", getSendMessageDefinition());
         mainDispatcher.put("broadcast", getBroadcastDefinition());
     }
 
@@ -570,7 +570,7 @@ public class Main {
                         "to", Map.of("type", "string", "description", "队友名字"),
                         "content", Map.of("type", "string", "description", "消息内容")
                 ));
-        return new ToolDefinition("send_message", "给队友发消息", sendMessageParams, new SendMessageDefinition());
+        return new ToolDefinition("send_message", "给队友发消息", sendMessageParams, new SendMessageHandler());
     }
 
     public static ToolDefinition getBroadcastDefinition() {
@@ -579,7 +579,7 @@ public class Main {
                 Map.of(
                         "sender", Map.of("type", "string", "description", "发送者名字"),
                         "content", Map.of("type", "string", "description", "广播内容")));
-        return new ToolDefinition("broadcast", "给所有队友广播消息", broadcastParams, new BroadcastDefinition());
+        return new ToolDefinition("broadcast", "给所有队友广播消息", broadcastParams, new BroadcastHandler());
     }
 
 

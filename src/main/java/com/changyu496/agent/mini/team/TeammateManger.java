@@ -224,14 +224,18 @@ public class TeammateManger {
 
     private static Map<String, Object> tool(String name, String description,
                                             Map<String, Object> properties) {
-        Map<String, Object> tool = new HashMap<>();
-        tool.put("name", name);
-        tool.put("description", description);
+        Map<String, Object> function = new HashMap<>();      // ← 新增
+        function.put("name", name);
+        function.put("description", description);
         Map<String, Object> params = new HashMap<>();
         params.put("type", "object");
         params.put("properties", properties);
-        tool.put("parameters", params);
-        return tool;
+        function.put("parameters", params);                    // ← 移到 function 里
+
+        Map<String, Object> tool = new HashMap<>();          // ← 新增外层包装
+        tool.put("type", "function");
+        tool.put("function", function);
+        return tool;                                          // ← 返回包装后的
     }
 
     public String listAll() {

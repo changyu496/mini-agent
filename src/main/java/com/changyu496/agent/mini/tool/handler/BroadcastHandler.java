@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Path;
 import java.util.Map;
 
-public class BroadcastDefinition implements ToolHandler {
+public class BroadcastHandler implements ToolHandler {
 
     @Override
     public String execute(String argJson, String functionName) {
