@@ -26,7 +26,7 @@ public class BackgroundManger {
         executor = Executors.newCachedThreadPool();
     }
 
-    public String submit(String type, String description, Runnable job) {
+    public String submit(String type, String description, Callable<String> job) {
         String jobId = UUID.randomUUID().toString();
         JobInfo jobInfo = new JobInfo();
         jobInfo.setJobId(jobId);
@@ -41,8 +41,7 @@ public class BackgroundManger {
             String result;
             String status = "completed";
             try {
-                job.run();
-                result = "执行完成";
+                result = job.call();
             } catch (Exception e) {
                 result = "执行失败：" + e.getMessage();
                 status = "error";

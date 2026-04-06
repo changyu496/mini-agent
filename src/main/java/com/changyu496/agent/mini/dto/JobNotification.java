@@ -8,4 +8,12 @@ public class JobNotification {
     private String status;
     private String result;
     private String type;
+
+    public String render() {
+        String stringBuilder = "任务状况：" + "任务ID：" + jobId + "\n" +
+                "任务状态" + status + "\n" +
+                "任务结果" + result + "\n" +
+                "任务类型" + type + "\n";
+        return stringBuilder;
+    }
 }

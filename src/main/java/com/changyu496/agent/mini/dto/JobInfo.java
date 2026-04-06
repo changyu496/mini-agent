@@ -26,6 +26,11 @@ public class JobInfo {
      * 任务描述
      */
     private String description;
+    /**
+     * SubAgent专用
+     * 只是演示使用，不是一个好的设计
+     */
+    private String prompt;
     private Date createAt;
 
     public String render() {

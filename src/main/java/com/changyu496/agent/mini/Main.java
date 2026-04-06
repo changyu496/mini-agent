@@ -1,10 +1,12 @@
 package com.changyu496.agent.mini;
 
+import com.changyu496.agent.mini.dto.JobNotification;
 import com.changyu496.agent.mini.dto.Message;
 import com.changyu496.agent.mini.dto.OpenAIResponse;
 import com.changyu496.agent.mini.dto.ToolCall;
 import com.changyu496.agent.mini.tool.*;
 import com.changyu496.agent.mini.tool.handler.*;
+import com.changyu496.agent.mini.tool.manger.BackgroundManger;
 import com.changyu496.agent.mini.tool.manger.TodoManager;
 
 import java.io.IOException;
@@ -32,6 +34,8 @@ public class Main {
         dispatcher.put("task_update", getTaskUpdateDefinition());
         dispatcher.put("task_list", getTaskListDefinition());
         dispatcher.put("task_detail", getTaskDetailDefinition());
+        dispatcher.put("background_submit", getBackgroundSubmitDefinition());
+        dispatcher.put("background_check", getBackgroundCheckDefinition());
     }
 
     private static final int MAX_MESSAGE_SIZE = 100;
@@ -67,6 +71,7 @@ public class Main {
                     if (estimatedTokens > 50000) {
                         historyMessages = autoCompact(historyMessages);
                     }
+                    injectBackgroundNotifications(historyMessages);
                     OpenAIResponse openAIResponse = client.call(historyMessages, regTool());
                     assistantMsg = openAIResponse.getChoices().get(0).getMessage();
                     // 过滤掉 <排除think> 和 </排除think> 标签
@@ -103,6 +108,23 @@ public class Main {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    public static void injectBackgroundNotifications(List<Message> historyMessages) {
+        List<JobNotification> jobNotifications = BackgroundManger.getInstance().drainNotifications();
+        StringBuilder stringBuilder = new StringBuilder();
+        if (Objects.nonNull(jobNotifications) && jobNotifications.size() > 1) {
+            stringBuilder.append("目前Agent的后台任务状况情况").append("\n");
+            jobNotifications.forEach(jobNotification -> {
+                stringBuilder.append(jobNotification.render())
+                        .append("\n");
+            });
+            // 如果有结果，就把内容放到消息列表里，让LLM去处理返回
+            Message message = new Message();
+            message.setRole("assistant");
+            message.setContent(stringBuilder.toString());
+            historyMessages.add(message);
         }
     }
 
@@ -237,6 +259,8 @@ public class Main {
         tools.add(toolToMap(getTaskUpdateDefinition()));
         tools.add(toolToMap(getTaskListDefinition()));
         tools.add(toolToMap(getTaskDetailDefinition()));
+        tools.add(toolToMap(getBackgroundCheckDefinition()));
+        tools.add(toolToMap(getBackgroundSubmitDefinition()));
         return tools;
     }
 
@@ -382,7 +406,7 @@ public class Main {
         subAgentParams.put("properties", sugAgentProps);
         subAgentParams.put("required", List.of("prompt"));
 
-        return new ToolDefinition("sub_agent", "启动一个子Agent，用新的上下文完成研究任务", subAgentParams, new SubAgentHandler());
+        return new ToolDefinition("sub_agent", "启动一个子Agent，用新的上下文完成研究任务", subAgentParams, SubAgentHandler.getInstance());
     }
 
     public static ToolDefinition getLoadSkillDefinition() {
@@ -492,6 +516,49 @@ public class Main {
         taskParams.put("required", List.of("taskId"));
 
         return new ToolDefinition("task_detail", "获取指定任务的详细信息", taskParams, new TaskHandler());
+    }
+
+    private static ToolDefinition getBackgroundCheckDefinition() {
+        Map<String, Object> backgroundCheckParams = new HashMap<>();
+        backgroundCheckParams.put("type", "object");
+
+        Map<String, Object> backgroundCheckProps = new HashMap<>();
+        Map<String, Object> jobId = new HashMap<>();
+        jobId.put("type", "string");
+        jobId.put("description", "需要查询的后台任务ID");
+        backgroundCheckProps.put("jobId", jobId);
+
+        backgroundCheckParams.put("properties", backgroundCheckProps);
+        backgroundCheckParams.put("required", List.of("jobId"));
+
+        return new ToolDefinition("background_check", "获取指定后台任务的状态", backgroundCheckParams, new BackgroundHandler());
+    }
+
+    private static ToolDefinition getBackgroundSubmitDefinition() {
+        Map<String, Object> backgroundSubmitParams = new HashMap<>();
+        backgroundSubmitParams.put("type", "object");
+
+        Map<String, Object> backgroundSubmitProps = new HashMap<>();
+        Map<String, Object> type = new HashMap<>();
+        type.put("type", "string");
+        type.put("description", "需要查询的后台任务ID");
+        backgroundSubmitProps.put("type", type);
+
+        Map<String, Object> description = new HashMap<>();
+        description.put("type", "string");
+        description.put("description", "需要提交的后台任务详细描述");
+        backgroundSubmitProps.put("description", description);
+
+        Map<String, Object> prompt = new HashMap<>();
+        prompt.put("type", "string");
+        prompt.put("description", "需要后台SubAgent研究的内容，如果type为subAgent，这个参数必须传");
+        backgroundSubmitProps.put("prompt", prompt);
+
+        backgroundSubmitParams.put("properties", backgroundSubmitProps);
+        backgroundSubmitParams.put("required", List.of("type"));
+
+        return new ToolDefinition("background_submit", "提交后台任务的状态", backgroundSubmitParams, new BackgroundHandler());
+
     }
 
 }
