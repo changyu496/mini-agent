@@ -114,7 +114,7 @@ public class Main {
     public static void injectBackgroundNotifications(List<Message> historyMessages) {
         List<JobNotification> jobNotifications = BackgroundManger.getInstance().drainNotifications();
         StringBuilder stringBuilder = new StringBuilder();
-        if (Objects.nonNull(jobNotifications) && jobNotifications.size() > 1) {
+        if (Objects.nonNull(jobNotifications) && jobNotifications.size() > 0) {
             stringBuilder.append("目前Agent的后台任务状况情况").append("\n");
             jobNotifications.forEach(jobNotification -> {
                 stringBuilder.append(jobNotification.render())
@@ -122,7 +122,7 @@ public class Main {
             });
             // 如果有结果，就把内容放到消息列表里，让LLM去处理返回
             Message message = new Message();
-            message.setRole("assistant");
+            message.setRole("user");
             message.setContent(stringBuilder.toString());
             historyMessages.add(message);
         }

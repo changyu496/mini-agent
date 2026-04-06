@@ -14,7 +14,7 @@ public class BackgroundHandler implements ToolHandler {
         Map<String, Object> argMap = new HashMap<>();
         ObjectMapper objectMapper = new ObjectMapper();
         try {
-            objectMapper.readValue(argJson, Map.class);
+            argMap = objectMapper.readValue(argJson, Map.class);
             if ("background_submit".equals(functionName)) {
                 String type = String.valueOf(argMap.get("type"));
                 String description = String.valueOf(argMap.get("description"));
