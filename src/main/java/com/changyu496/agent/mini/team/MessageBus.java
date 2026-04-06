@@ -1,4 +1,4 @@
-package com.changyu496.agent.mini.tool;
+package com.changyu496.agent.mini.team;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -8,13 +8,13 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 
+import static java.nio.file.StandardOpenOption.CREATE;
+
 public class MessageBus {
 
     private final Path inboxDir;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    private static final String DEFAULT_MESSAGE_PATH = System.getProperty("user.home") + "/.team";
 
     public MessageBus(Path inboxDir) {
         this.inboxDir = inboxDir;
@@ -43,14 +43,14 @@ public class MessageBus {
             }
         }
         try {
-            Files.writeString(inboxPath, objectMapper.writeValueAsString(message) + "\n", StandardOpenOption.APPEND);
+            Files.writeString(inboxPath, objectMapper.writeValueAsString(message) + "\n", StandardOpenOption.APPEND, CREATE);
         } catch (IOException e) {
             System.out.println("写入消息文件遇到异常" + e.getMessage());
         }
     }
 
     public List<Map<String, Object>> readInbox(String name) {
-        Path inboxPath = inboxDir.resolve("name" + ".jsonl");
+        Path inboxPath = inboxDir.resolve(name + ".jsonl");
         if (!Files.exists(inboxPath)) {
             return new ArrayList<>();
         }

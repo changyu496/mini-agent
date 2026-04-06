@@ -1,6 +1,6 @@
 package com.changyu496.agent.mini.tool.handler;
 
-import com.changyu496.agent.mini.tool.manger.BackgroundManger;
+import com.changyu496.agent.mini.background.BackgroundManger;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

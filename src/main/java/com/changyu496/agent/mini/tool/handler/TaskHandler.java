@@ -1,7 +1,7 @@
 package com.changyu496.agent.mini.tool.handler;
 
-import com.changyu496.agent.mini.dto.Task;
-import com.changyu496.agent.mini.tool.manger.TaskManger;
+import com.changyu496.agent.mini.task.Task;
+import com.changyu496.agent.mini.task.TaskManger;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

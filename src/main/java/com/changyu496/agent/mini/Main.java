@@ -1,13 +1,14 @@
 package com.changyu496.agent.mini;
 
-import com.changyu496.agent.mini.dto.JobNotification;
+import com.changyu496.agent.mini.agent.AgentRunner;
+import com.changyu496.agent.mini.background.JobNotification;
 import com.changyu496.agent.mini.dto.Message;
 import com.changyu496.agent.mini.dto.OpenAIResponse;
 import com.changyu496.agent.mini.dto.ToolCall;
 import com.changyu496.agent.mini.tool.*;
 import com.changyu496.agent.mini.tool.handler.*;
-import com.changyu496.agent.mini.tool.manger.BackgroundManger;
-import com.changyu496.agent.mini.tool.manger.TodoManager;
+import com.changyu496.agent.mini.background.BackgroundManger;
+import com.changyu496.agent.mini.todo.TodoManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -20,31 +21,47 @@ import static java.nio.file.StandardOpenOption.APPEND;
 
 public class Main {
 
-    private static final Map<String, ToolDefinition> dispatcher = new HashMap<>();
+    private static final Map<String, ToolDefinition> mainDispatcher = new HashMap<>();
 
     static {
-        dispatcher.put("read_file", getReadFileDefinition());
-        dispatcher.put("write_file", getWriteFileDefinition());
-        dispatcher.put("search_notes", getSearchNotesDefinition());
-        dispatcher.put("todo", getTodoDefinition());
-        dispatcher.put("sub_agent", getSubAgentDefinition());
-        dispatcher.put("load_skill", getLoadSkillDefinition());
-        dispatcher.put("compact", getCompactDefinition());
-        dispatcher.put("task_create", getTaskCreateDefinition());
-        dispatcher.put("task_update", getTaskUpdateDefinition());
-        dispatcher.put("task_list", getTaskListDefinition());
-        dispatcher.put("task_detail", getTaskDetailDefinition());
-        dispatcher.put("background_submit", getBackgroundSubmitDefinition());
-        dispatcher.put("background_check", getBackgroundCheckDefinition());
+        mainDispatcher.put("read_file", getReadFileDefinition());
+        mainDispatcher.put("write_file", getWriteFileDefinition());
+        mainDispatcher.put("search_notes", getSearchNotesDefinition());
+        mainDispatcher.put("todo", getTodoDefinition());
+        mainDispatcher.put("sub_agent", getSubAgentDefinition());
+        mainDispatcher.put("load_skill", getLoadSkillDefinition());
+        mainDispatcher.put("compact", getCompactDefinition());
+        mainDispatcher.put("task_create", getTaskCreateDefinition());
+        mainDispatcher.put("task_update", getTaskUpdateDefinition());
+        mainDispatcher.put("task_list", getTaskListDefinition());
+        mainDispatcher.put("task_detail", getTaskDetailDefinition());
+        mainDispatcher.put("background_submit", getBackgroundSubmitDefinition());
+        mainDispatcher.put("background_check", getBackgroundCheckDefinition());
+    }
+
+    private static final Map<String, ToolDefinition> subAgentDispatcher = new HashMap<>();
+
+    static {
+        subAgentDispatcher.put("read_file", getReadFileDefinition());
+        subAgentDispatcher.put("write_file", getWriteFileDefinition());
+        subAgentDispatcher.put("search_notes", getSearchNotesDefinition());
+        subAgentDispatcher.put("todo", getTodoDefinition());
+        subAgentDispatcher.put("load_skill", getLoadSkillDefinition());
+        subAgentDispatcher.put("compact", getCompactDefinition());
+        subAgentDispatcher.put("task_create", getTaskCreateDefinition());
+        subAgentDispatcher.put("task_update", getTaskUpdateDefinition());
+        subAgentDispatcher.put("task_list", getTaskListDefinition());
+        subAgentDispatcher.put("task_detail", getTaskDetailDefinition());
     }
 
     private static final int MAX_MESSAGE_SIZE = 100;
 
     public static List<Message> historyMessages = new ArrayList<>();
 
+    public static OpenAIHttpClient client = new OpenAIHttpClient();
+
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        OpenAIHttpClient client = new OpenAIHttpClient();
         buildSystemPrompt(historyMessages);
         int roundSinceTodo = 0;
         while (true) {
@@ -62,39 +79,13 @@ public class Main {
             message.setRole("user");
             historyMessages.add(message);
             try {
-                String finishReason;
-                Message assistantMsg;
-
-                do {
-                    microCompact(historyMessages);
-                    int estimatedTokens = historyMessages.stream().mapToInt(m -> m.getContent() == null ? 0 : m.getContent().length() / 4).sum();
-                    if (estimatedTokens > 50000) {
-                        historyMessages = autoCompact(historyMessages);
-                    }
-                    injectBackgroundNotifications(historyMessages);
-                    OpenAIResponse openAIResponse = client.call(historyMessages, regTool());
-                    assistantMsg = openAIResponse.getChoices().get(0).getMessage();
-                    // 过滤掉 <排除think> 和 </排除think> 标签
-                    String filtered = assistantMsg.getContent().replaceAll("<think>[\\s\\S]*?</think>", "").trim();
-                    assistantMsg.setContent(filtered);
-                    finishReason = openAIResponse.getChoices().get(0).getFinishReason();
-                    historyMessages.add(assistantMsg);
-                    if ("tool_calls".equals(finishReason)) {
-                        for (ToolCall toolCall : assistantMsg.getToolCalls()) {
-                            String result = callTool(toolCall);
-                            if ("todo".equals(toolCall.getFunction().getName())) {
-                                roundSinceTodo = 0;
-                            }
-                            Message toolResult = new Message();
-                            toolResult.setRole("tool");
-                            toolResult.setName(toolCall.getFunction().getName());
-                            toolResult.setToolCallId(toolCall.getId());
-                            toolResult.setContent(result);
-                            historyMessages.add(toolResult);
-                        }
-                    }
-                } while ("tool_calls".equals(finishReason));
-                System.out.println("assistant:" + assistantMsg.getContent());
+                AgentRunner.ToolExecutor mainExecutor = ((toolName, argsJson) -> {
+                    ToolDefinition def = mainDispatcher.get(toolName);
+                    return def.getToolHandler().execute(argsJson, toolName);
+                });
+                AgentRunner.NotificationHandler mainNotificationHandler = Main::injectBackgroundNotifications;
+                String content = AgentRunner.run(client, historyMessages, regTool(), mainExecutor, mainNotificationHandler, -1);
+                System.out.println("assistant:" + content);
                 microCompact(historyMessages);
                 roundSinceTodo++;
                 if (roundSinceTodo >= 3) {
@@ -202,41 +193,15 @@ public class Main {
     public static String runSubAgent(String prompt) {
         List<Message> subMessages = new ArrayList<>();
         buildSubAgentSystemPrompt(subMessages);
-
         Message userMessage = new Message();
         userMessage.setRole("user");
         userMessage.setContent(prompt);
         subMessages.add(userMessage);
-
-        // 最大轮数
-        int maxRound = 30;
-        int round = 0;
-
-        while (round < maxRound) {
-            OpenAIHttpClient openAIHttpClient = new OpenAIHttpClient();
-            List<Map<String, Object>> tools = regBasicTool();
-
-            OpenAIResponse openAIResponse = openAIHttpClient.call(subMessages, tools);
-            Message assistantMessage = openAIResponse.getChoices().get(0).getMessage();
-            subMessages.add(assistantMessage);
-
-            String finishReason = openAIResponse.getChoices().get(0).getFinishReason();
-
-            if (!"tool_calls".equals(finishReason)) {
-                return assistantMessage.getContent() != null ? assistantMessage.getContent() : "(无结果)";
-            }
-            for (ToolCall toolCall : assistantMessage.getToolCalls()) {
-                String toolResult = callTool(toolCall);
-                Message toolResultMessage = new Message();
-                toolResultMessage.setContent(toolResult);
-                toolResultMessage.setName(toolCall.getFunction().getName());
-                toolResultMessage.setRole("tool");
-                toolResultMessage.setToolCallId(toolCall.getId());
-                subMessages.add(toolResultMessage);
-            }
-            round++;
-        }
-        return "(达到最大轮次限制)";
+        AgentRunner.ToolExecutor subAgentExecutor = ((toolName, argsJson) -> {
+            ToolDefinition def = mainDispatcher.get(toolName);
+            return def.getToolHandler().execute(argsJson, toolName);
+        });
+        return AgentRunner.run(client, subMessages, regBasicTool(), subAgentExecutor, null, 30);
     }
 
     private static void buildSystemPrompt(List<Message> historyMessages) {
@@ -288,7 +253,7 @@ public class Main {
     private static String callTool(ToolCall toolCall) {
         String functionName = toolCall.getFunction().getName();
         String arguments = toolCall.getFunction().getArguments();
-        ToolDefinition toolDefinition = dispatcher.get(functionName);
+        ToolDefinition toolDefinition = mainDispatcher.get(functionName);
         if (Objects.isNull(toolDefinition)) {
             return "未知工具";
         }

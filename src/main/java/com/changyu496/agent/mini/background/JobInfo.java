@@ -1,4 +1,4 @@
-package com.changyu496.agent.mini.dto;
+package com.changyu496.agent.mini.background;
 
 import lombok.Data;
 

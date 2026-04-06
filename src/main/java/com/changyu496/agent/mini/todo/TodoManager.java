@@ -1,7 +1,5 @@
-package com.changyu496.agent.mini.tool.manger;
+package com.changyu496.agent.mini.todo;
 
-import com.changyu496.agent.mini.dto.TodoItem;
-import com.changyu496.agent.mini.dto.TodoState;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 

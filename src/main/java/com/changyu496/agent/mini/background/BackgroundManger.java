@@ -1,7 +1,4 @@
-package com.changyu496.agent.mini.tool.manger;
-
-import com.changyu496.agent.mini.dto.JobInfo;
-import com.changyu496.agent.mini.dto.JobNotification;
+package com.changyu496.agent.mini.background;
 
 import java.util.*;
 import java.util.concurrent.*;
