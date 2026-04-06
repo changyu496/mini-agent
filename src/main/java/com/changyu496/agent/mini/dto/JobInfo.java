@@ -29,23 +29,11 @@ public class JobInfo {
     private Date createAt;
 
     public String render() {
-        return "任务详情如下:" + "jobId：" + jobId +
-                "状态：" + status +
-                "结果：" + result +
-                "类型：" + type +
-                "描述：" + description +
+        return "任务详情如下:" + "jobId：" + jobId + "\n" +
+                "状态：" + status + "\n" +
+                "结果：" + result + "\n" +
+                "类型：" + type + "\n" +
+                "描述：" + description + "\n" +
                 "创建时间：" + createAt.toString();
-    }
-
-    @Override
-    public String toString() {
-        return "JobInfo{" +
-                "jobId='" + jobId + '\'' +
-                ", status='" + status + '\'' +
-                ", result='" + result + '\'' +
-                ", type='" + type + '\'' +
-                ", description='" + description + '\'' +
-                ", createAt=" + createAt +
-                '}';
     }
 }
