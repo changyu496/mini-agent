@@ -1,14 +1,15 @@
 package com.changyu496.agent.mini;
 
 import com.changyu496.agent.mini.agent.AgentRunner;
-import com.changyu496.agent.mini.background.JobNotification;
 import com.changyu496.agent.mini.agent.Message;
 import com.changyu496.agent.mini.agent.OpenAIResponse;
-import com.changyu496.agent.mini.agent.ToolCall;
-import com.changyu496.agent.mini.tool.*;
-import com.changyu496.agent.mini.tool.handler.*;
 import com.changyu496.agent.mini.background.BackgroundManger;
+import com.changyu496.agent.mini.background.JobNotification;
 import com.changyu496.agent.mini.todo.TodoManager;
+import com.changyu496.agent.mini.tool.SkillLoader;
+import com.changyu496.agent.mini.tool.TodoHandler;
+import com.changyu496.agent.mini.tool.ToolDefinition;
+import com.changyu496.agent.mini.tool.handler.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -37,6 +38,11 @@ public class Main {
         mainDispatcher.put("task_detail", getTaskDetailDefinition());
         mainDispatcher.put("background_submit", getBackgroundSubmitDefinition());
         mainDispatcher.put("background_check", getBackgroundCheckDefinition());
+        mainDispatcher.put("spawn_teammate", getSpawnTeammateDefinition());
+        mainDispatcher.put("list_teammate", getListTeammatesDefinition());
+        mainDispatcher.put("read_inbox", getReadInboxDefinition());
+        mainDispatcher.put("send_massage", getSendMessageDefinition());
+        mainDispatcher.put("broadcast", getBroadcastDefinition());
     }
 
     private static final Map<String, ToolDefinition> subAgentDispatcher = new HashMap<>();
@@ -223,6 +229,12 @@ public class Main {
         tools.add(toolToMap(getTaskDetailDefinition()));
         tools.add(toolToMap(getBackgroundCheckDefinition()));
         tools.add(toolToMap(getBackgroundSubmitDefinition()));
+        tools.add(toolToMap(getSpawnTeammateDefinition()));
+        tools.add(toolToMap(getListTeammatesDefinition()));
+        tools.add(toolToMap(getSendMessageDefinition()));
+        tools.add(toolToMap(getReadInboxDefinition()));
+        tools.add(toolToMap(getBroadcastDefinition()));
+
         return tools;
     }
 
@@ -511,5 +523,64 @@ public class Main {
 
         return new ToolDefinition("background_submit", "提交后台任务的状态", backgroundSubmitParams, new BackgroundHandler());
     }
+
+    private static Map<String, Object> teamTool(String name, String description,
+                                                Map<String, Object> properties) {
+        Map<String, Object> tool = new HashMap<>();
+        tool.put("name", name);
+        tool.put("description", description);
+        Map<String, Object> params = new HashMap<>();
+        params.put("type", "object");
+        params.put("properties", properties);
+        tool.put("parameters", params);
+        return tool;
+    }
+
+    public static ToolDefinition getSpawnTeammateDefinition() {
+        Map<String, Object> spawnTeammateParams;
+        spawnTeammateParams = teamTool("spawn_teammate", "启动一个持久化的队友Agent",
+                Map.of(
+                        "name", Map.of("type", "string", "description", "队友名字"),
+                        "role", Map.of("type", "string", "description", "队友角色，如 coder、reviewer"),
+                        "prompt", Map.of("type", "string", "description", "给队友的初始任务")
+                ));
+        return new ToolDefinition("spawn_teammate", "启动一个持久化的队友Agent", spawnTeammateParams, new SpawnTeammateHandler());
+    }
+
+    public static ToolDefinition getListTeammatesDefinition() {
+        Map<String, Object> listTeammatesParams;
+        listTeammatesParams = teamTool("list_teammates", "列出所有队友的状态",
+                Map.of());
+        return new ToolDefinition("list_teammates", "列出所有队友的状态", listTeammatesParams, new ListTeammateHandler());
+    }
+
+    public static ToolDefinition getReadInboxDefinition() {
+        Map<String, Object> readInboxParams;
+        readInboxParams = teamTool("read_inbox", "读取并清空自己的收件箱", Map.of(
+                "name", Map.of("type", "string", "description", "收件人的姓名")
+        ));
+        return new ToolDefinition("read_inbox", "读取并清空自己的收件箱", readInboxParams, new ReadInboxHandler());
+    }
+
+    public static ToolDefinition getSendMessageDefinition() {
+        Map<String, Object> sendMessageParams;
+        sendMessageParams = teamTool("send_message", "给队友发消息",
+                Map.of(
+                        "sender", Map.of("type", "string", "description", "发送者名字"),
+                        "to", Map.of("type", "string", "description", "队友名字"),
+                        "content", Map.of("type", "string", "description", "消息内容")
+                ));
+        return new ToolDefinition("send_message", "给队友发消息", sendMessageParams, new SendMessageDefinition());
+    }
+
+    public static ToolDefinition getBroadcastDefinition() {
+        Map<String, Object> broadcastParams;
+        broadcastParams = teamTool("broadcast", "给所有队友广播消息",
+                Map.of(
+                        "sender", Map.of("type", "string", "description", "发送者名字"),
+                        "content", Map.of("type", "string", "description", "广播内容")));
+        return new ToolDefinition("broadcast", "给所有队友广播消息", broadcastParams, new BroadcastDefinition());
+    }
+
 
 }

@@ -12,8 +12,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static com.changyu496.agent.mini.Main.*;
-
 public class TeammateManger {
 
     private TeamConfig teamConfig;
@@ -27,11 +25,24 @@ public class TeammateManger {
      */
     private Map<String, Thread> threads = new ConcurrentHashMap<>();
 
-    public TeammateManger(Path teamDir) {
+    private static TeammateManger instance;
+
+    private TeammateManger(Path teamDir) {
         configPath = teamDir.resolve("config.json");
         inboxDirPath = teamDir.resolve("inbox");
         this.messageBus = new MessageBus(inboxDirPath);
         loadConfig(configPath);
+    }
+
+    public MessageBus getMessageBus() {
+        return messageBus;
+    }
+
+    public static synchronized TeammateManger getInstance(Path teamDir){
+        if (instance == null){
+            instance = new TeammateManger(teamDir);
+        }
+        return instance;
     }
 
     private void loadConfig(Path configPath) {
@@ -113,7 +124,7 @@ public class TeammateManger {
                 }
             }
             // LLM
-            AgentRunner.run(OpenAIHttpClient.getInstance(), messages, buildTeammateTools(), getTeammateExecutor(name), null, 50);
+            AgentRunner.run(OpenAIHttpClient.getInstance(), messages, buildTeammateTools(), getTeammateExecutor(name), null, maxRound);
             Member member = findMember(name);
             if (member != null && "shutdown".equals(member.getStatus())) {
                 break;

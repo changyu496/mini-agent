@@ -76,4 +76,15 @@ public class MessageBus {
         }
         return messages;
     }
+
+    public String broadcast(String sender, String content, List<String> teammates) {
+        int count = 0;
+        for (String name : teammates) {
+            if (!name.equals(sender)) {
+                send(sender, name, content, "broadcast");
+                count++;
+            }
+        }
+        return "已经广播给" + count + "个队友";
+    }
 }
