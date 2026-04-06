@@ -1,8 +1,8 @@
 package com.changyu496.agent.mini;
 
-import com.changyu496.agent.mini.dto.Message;
-import com.changyu496.agent.mini.dto.OpenAIRequestBody;
-import com.changyu496.agent.mini.dto.OpenAIResponse;
+import com.changyu496.agent.mini.agent.Message;
+import com.changyu496.agent.mini.agent.OpenAIRequestBody;
+import com.changyu496.agent.mini.agent.OpenAIResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
 

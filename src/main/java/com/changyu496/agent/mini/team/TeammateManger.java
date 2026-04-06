@@ -1,6 +1,6 @@
 package com.changyu496.agent.mini.team;
 
-import com.changyu496.agent.mini.dto.Message;
+import com.changyu496.agent.mini.agent.Message;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

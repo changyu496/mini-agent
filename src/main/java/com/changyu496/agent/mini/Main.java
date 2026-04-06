@@ -2,9 +2,9 @@ package com.changyu496.agent.mini;
 
 import com.changyu496.agent.mini.agent.AgentRunner;
 import com.changyu496.agent.mini.background.JobNotification;
-import com.changyu496.agent.mini.dto.Message;
-import com.changyu496.agent.mini.dto.OpenAIResponse;
-import com.changyu496.agent.mini.dto.ToolCall;
+import com.changyu496.agent.mini.agent.Message;
+import com.changyu496.agent.mini.agent.OpenAIResponse;
+import com.changyu496.agent.mini.agent.ToolCall;
 import com.changyu496.agent.mini.tool.*;
 import com.changyu496.agent.mini.tool.handler.*;
 import com.changyu496.agent.mini.background.BackgroundManger;

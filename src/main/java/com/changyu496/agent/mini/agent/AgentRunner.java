@@ -1,9 +1,6 @@
 package com.changyu496.agent.mini.agent;
 
 import com.changyu496.agent.mini.OpenAIHttpClient;
-import com.changyu496.agent.mini.dto.Message;
-import com.changyu496.agent.mini.dto.OpenAIResponse;
-import com.changyu496.agent.mini.dto.ToolCall;
 
 import java.util.List;
 import java.util.Map;

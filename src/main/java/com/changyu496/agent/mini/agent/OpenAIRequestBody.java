@@ -1,10 +1,9 @@
-package com.changyu496.agent.mini.dto;
+package com.changyu496.agent.mini.agent;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public class OpenAIRequestBody {
 

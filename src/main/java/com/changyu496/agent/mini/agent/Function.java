@@ -1,4 +1,4 @@
-package com.changyu496.agent.mini.dto;
+package com.changyu496.agent.mini.agent;
 
 public class Function {
 

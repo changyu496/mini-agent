@@ -1,7 +1,7 @@
 package com.changyu496.agent.mini.tool.handler;
 
 import com.changyu496.agent.mini.Main;
-import com.changyu496.agent.mini.dto.Message;
+import com.changyu496.agent.mini.agent.Message;
 
 import java.util.List;
 
