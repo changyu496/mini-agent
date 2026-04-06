@@ -5,6 +5,7 @@ import com.changyu496.agent.mini.agent.Message;
 import com.changyu496.agent.mini.agent.OpenAIResponse;
 import com.changyu496.agent.mini.background.BackgroundManger;
 import com.changyu496.agent.mini.background.JobNotification;
+import com.changyu496.agent.mini.team.TeammateManger;
 import com.changyu496.agent.mini.todo.TodoManager;
 import com.changyu496.agent.mini.tool.SkillLoader;
 import com.changyu496.agent.mini.tool.TodoHandler;
@@ -87,7 +88,7 @@ public class Main {
                     ToolDefinition def = mainDispatcher.get(toolName);
                     return def.getToolHandler().execute(argsJson, toolName);
                 });
-                AgentRunner.NotificationHandler mainNotificationHandler = Main::injectBackgroundNotifications;
+                AgentRunner.NotificationHandler mainNotificationHandler = Main::injectNotifications;
                 String content = AgentRunner.run(OpenAIHttpClient.getInstance(), historyMessages, regTool(), mainExecutor, mainNotificationHandler, -1);
                 System.out.println("assistant:" + content);
                 microCompact(historyMessages);
@@ -106,7 +107,8 @@ public class Main {
         }
     }
 
-    private static void injectBackgroundNotifications(List<Message> historyMessages) {
+    private static void injectNotifications(List<Message> historyMessages) {
+        // 后台消息
         List<JobNotification> jobNotifications = BackgroundManger.getInstance().drainNotifications();
         StringBuilder stringBuilder = new StringBuilder();
         if (Objects.nonNull(jobNotifications) && jobNotifications.size() > 0) {
@@ -120,6 +122,18 @@ public class Main {
             message.setRole("user");
             message.setContent(stringBuilder.toString());
             historyMessages.add(message);
+        }
+
+        // 队友消息
+        List<Map<String, Object>> teammateMessages = TeammateManger.getInstance(Path.of(System.getProperty("user.home") + "/.team"))
+                .getMessageBus().readInbox("lead");
+        if (!teammateMessages.isEmpty()) {
+            for (Map<String, Object> teammateMessage : teammateMessages) {
+                Message m = new Message();
+                m.setRole("user");
+                m.setContent("[队友消息]来自" + teammateMessage.get("from") + ":" + teammateMessage.get("content"));
+                historyMessages.add(m);
+            }
         }
     }
 
