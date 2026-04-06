@@ -541,7 +541,7 @@ public class Main {
         Map<String, Object> backgroundSubmitProps = new HashMap<>();
         Map<String, Object> type = new HashMap<>();
         type.put("type", "string");
-        type.put("description", "需要查询的后台任务ID");
+        type.put("description", "需要提交到后台任务的类型，目前只支持subAgent");
         backgroundSubmitProps.put("type", type);
 
         Map<String, Object> description = new HashMap<>();
@@ -558,7 +558,6 @@ public class Main {
         backgroundSubmitParams.put("required", List.of("type"));
 
         return new ToolDefinition("background_submit", "提交后台任务的状态", backgroundSubmitParams, new BackgroundHandler());
-
     }
 
 }

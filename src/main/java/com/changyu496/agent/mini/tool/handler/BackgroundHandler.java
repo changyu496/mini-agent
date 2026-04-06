@@ -23,10 +23,11 @@ public class BackgroundHandler implements ToolHandler {
                     prompt = String.valueOf(argMap.get("prompt"));
                 }
                 String finalPrompt = prompt;
-                BackgroundManger.getInstance().submit(type, description, () -> {
+                String jobId = BackgroundManger.getInstance().submit(type, description, () -> {
                     // 现在只有subAgent支持后台
                     return SubAgentHandler.getInstance().runWithResult(finalPrompt);
                 });
+                return "后台任务已启动，jobId为:" + jobId;
             }
             if ("background_check".equals(functionName)) {
                 String jobId = String.valueOf(argMap.get("jobId"));
